@@ -1,0 +1,219 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0" />
+  <title>KhidmatAI — AI Service Orchestrator</title>
+  <meta name="description" content="KhidmatAI connects you with verified local service providers using agentic AI. Voice-enabled, instant booking, live tracking." />
+
+  <!-- Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&family=Inter:wght@400;500;600&display=swap" rel="stylesheet" />
+
+  <!-- Leaflet Map -->
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
+  <!-- Icons -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" />
+
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+
+  <!-- ═══ SPLASH SCREEN ═══ -->
+  <div id="splash-screen">
+    <div class="splash-logo">
+      <div class="splash-icon">🤖</div>
+      <h1 class="splash-title">KhidmatAI</h1>
+      <p class="splash-sub">Powered by Google Antigravity</p>
+      <div class="splash-loader">
+        <div class="splash-bar"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══ MAIN APP SHELL ═══ -->
+  <div id="app" class="app-shell hidden">
+
+    <!-- ── Header ── -->
+    <header class="app-header">
+      <div class="header-left">
+        <div class="header-logo">🤖</div>
+        <div>
+          <h1 class="header-title">KhidmatAI</h1>
+          <p class="header-sub">AI Service Orchestrator</p>
+        </div>
+      </div>
+      <div class="header-right">
+        <div class="header-status">
+          <span class="status-dot pulse"></span>
+          <span class="status-text">5 Agents Active</span>
+        </div>
+        <div class="antigravity-badge">
+          <i class="fa-solid fa-atom"></i> Antigravity
+        </div>
+      </div>
+    </header>
+
+    <!-- ── Tab Content Area ── -->
+    <main class="tab-content">
+
+      <!-- ── TAB 1: CHAT ── -->
+      <section id="tab-chat" class="tab-panel active" role="tabpanel">
+        <div class="chat-messages" id="chat-messages">
+          <!-- Welcome message injected by JS -->
+        </div>
+
+        <!-- Booking card injected here -->
+        <div id="booking-card-container"></div>
+
+        <!-- Input Bar -->
+        <div class="chat-input-bar">
+          <button id="mic-btn" class="icon-btn mic-btn" title="Voice Input" aria-label="Voice Input">
+            <i class="fa-solid fa-microphone"></i>
+          </button>
+          <textarea
+            id="chat-input"
+            class="chat-input"
+            placeholder='Try: "Mujhe G-13 mein AC technician chahiye"'
+            rows="1"
+            aria-label="Chat input"
+          ></textarea>
+          <button id="send-btn" class="send-btn" aria-label="Send message">
+            <i class="fa-solid fa-paper-plane"></i>
+          </button>
+        </div>
+        <p class="input-hint">Supports English, Roman Urdu, اردو • Voice enabled</p>
+      </section>
+
+      <!-- ── TAB 2: MAP ── -->
+      <section id="tab-map" class="tab-panel" role="tabpanel">
+        <div class="map-header">
+          <h2 class="map-title">Live Provider Map</h2>
+          <p class="map-subtitle" id="map-subtitle">G-13, Islamabad • <span id="provider-count">15</span> providers</p>
+        </div>
+        <div id="leaflet-map"></div>
+
+        <!-- Tracking bar -->
+        <div id="tracking-bar" class="tracking-bar hidden">
+          <div class="tracking-info">
+            <span class="tracking-label" id="tracking-label">🚗 Provider En Route</span>
+            <span class="tracking-eta" id="tracking-eta">--</span>
+          </div>
+          <div class="tracking-progress-wrap">
+            <div class="tracking-progress-bg">
+              <div class="tracking-progress-fill" id="tracking-progress"></div>
+            </div>
+          </div>
+          <p class="tracking-distance" id="tracking-distance">Calculating...</p>
+        </div>
+      </section>
+
+      <!-- ── TAB 3: BOOKINGS ── -->
+      <section id="tab-bookings" class="tab-panel" role="tabpanel">
+        <div class="bookings-header">
+          <h2 class="section-title">My Bookings</h2>
+          <span class="badge-count" id="booking-badge-count">0</span>
+        </div>
+        <div id="bookings-list" class="bookings-list">
+          <div class="empty-state">
+            <div class="empty-icon">📋</div>
+            <p>No bookings yet.</p>
+            <p class="empty-hint">Chat with KhidmatAI to book a service.</p>
+          </div>
+        </div>
+      </section>
+
+      <!-- ── TAB 4: TRACE ── -->
+      <section id="tab-trace" class="tab-panel" role="tabpanel">
+        <div class="trace-header">
+          <div>
+            <h2 class="section-title"><i class="fa-solid fa-atom"></i> Antigravity Trace</h2>
+            <p class="trace-subtitle">Real-time agent reasoning logs</p>
+          </div>
+          <button id="export-trace-btn" class="export-btn" title="Export trace log">
+            <i class="fa-solid fa-download"></i> Export
+          </button>
+        </div>
+
+        <div class="agent-pipeline">
+          <div class="pipeline-step" data-agent="intent">
+            <div class="pipeline-dot pending" id="dot-intent"></div>
+            <span>Intent</span>
+          </div>
+          <div class="pipeline-line" id="line-1"></div>
+          <div class="pipeline-step" data-agent="discovery">
+            <div class="pipeline-dot pending" id="dot-discovery"></div>
+            <span>Discovery</span>
+          </div>
+          <div class="pipeline-line" id="line-2"></div>
+          <div class="pipeline-step" data-agent="ranking">
+            <div class="pipeline-dot pending" id="dot-ranking"></div>
+            <span>Ranking</span>
+          </div>
+          <div class="pipeline-line" id="line-3"></div>
+          <div class="pipeline-step" data-agent="booking">
+            <div class="pipeline-dot pending" id="dot-booking"></div>
+            <span>Booking</span>
+          </div>
+          <div class="pipeline-line" id="line-4"></div>
+          <div class="pipeline-step" data-agent="followup">
+            <div class="pipeline-dot pending" id="dot-followup"></div>
+            <span>Follow-up</span>
+          </div>
+        </div>
+
+        <div id="trace-log" class="trace-log">
+          <p class="trace-empty">Send a message to see agent reasoning here.</p>
+        </div>
+      </section>
+
+    </main>
+
+    <!-- ── Bottom Navigation ── -->
+    <nav class="bottom-nav" role="navigation" aria-label="Main navigation">
+      <button class="nav-btn active" data-tab="chat" id="nav-chat" aria-label="Chat">
+        <i class="fa-solid fa-comments"></i>
+        <span>Chat</span>
+      </button>
+      <button class="nav-btn" data-tab="map" id="nav-map" aria-label="Map">
+        <i class="fa-solid fa-map-location-dot"></i>
+        <span>Map</span>
+      </button>
+      <button class="nav-btn" data-tab="bookings" id="nav-bookings" aria-label="Bookings">
+        <i class="fa-solid fa-calendar-check"></i>
+        <span>Bookings</span>
+        <span class="nav-badge hidden" id="nav-bookings-badge">0</span>
+      </button>
+      <button class="nav-btn" data-tab="trace" id="nav-trace" aria-label="Trace">
+        <i class="fa-solid fa-atom"></i>
+        <span>Trace</span>
+      </button>
+    </nav>
+
+  </div><!-- /#app -->
+
+  <!-- ─── RATING MODAL ─── -->
+  <div id="rating-modal" class="modal-overlay hidden">
+    <div class="modal-card">
+      <h3 class="modal-title">Rate Your Experience</h3>
+      <p class="modal-sub" id="rating-modal-provider"></p>
+      <div class="star-rating" id="star-rating">
+        <span class="star" data-value="1">⭐</span>
+        <span class="star" data-value="2">⭐</span>
+        <span class="star" data-value="3">⭐</span>
+        <span class="star" data-value="4">⭐</span>
+        <span class="star" data-value="5">⭐</span>
+      </div>
+      <textarea id="rating-comment" class="rating-textarea" placeholder="Tell us more (optional)..." rows="3"></textarea>
+      <div class="modal-actions">
+        <button id="submit-rating-btn" class="btn-primary">Submit Rating</button>
+        <button id="skip-rating-btn" class="btn-ghost">Skip</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>
