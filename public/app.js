@@ -49,6 +49,7 @@ let micPermissionDenied = false; // Set true on 'not-allowed' — stops infinite
 let voiceCardResetTimer = null;  // Timer ref for voice card idle reset (so we can cancel it)
 let wakeWordEnabled     = false; // Opt-in master switch: "Hey Fixr" background listening
                                  // only runs after the user taps the wake-toggle.
+let userBargedIn        = false; // True when the user taps mic to cut off Fixr mid-speech
 
 // ══════════════════════════════════════════════════════════════
 // PWA — Service Worker + Install Prompt
@@ -991,11 +992,17 @@ micBtn?.addEventListener('click', () => {
     document.querySelector('.nav-btn[data-target="chat-container"]')?.click();
     showListeningBubble();
 
-    if (!isRecognitionRunning && !isAgentSpeaking) {
-        // Edge case: recognition stopped (e.g. after explicit stop or iOS timeout)
+    // Barge-in: if Fixr is speaking, the mic tap cuts it off immediately so
+    // the user can talk over it — then we open the mic to hear them.
+    if (isAgentSpeaking) {
+        userBargedIn = true;
+        stopCurrentSpeech();
+    }
+
+    if (!isRecognitionRunning) {
         startRecognition(activeSpeechLang);
     } else {
-        // Already running in wake-word mode — just show the active UI
+        // Already running (wake-word mode) — just show the active UI
         micBtn.classList.add('listening');
         const voiceOrb = document.getElementById('voice-orb');
         if (voiceOrb) voiceOrb.classList.add('listening');
@@ -1120,8 +1127,44 @@ document.body.appendChild(imgFileInput);
 
 imgBtn?.addEventListener('click', () => {
     if (isProcessing) return;
-    imgFileInput.click();
+    showImageSourceSheet();
 });
+
+// Action sheet — let the user take a LIVE photo or pick one from the gallery
+function showImageSourceSheet() {
+    const existing = document.getElementById('img-source-sheet');
+    if (existing) existing.remove();
+
+    const overlay = document.createElement('div');
+    overlay.id = 'img-source-sheet';
+    overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.45);z-index:9998;display:flex;align-items:flex-end;justify-content:center;';
+    overlay.innerHTML = `
+        <div style="background:var(--card,#fff);width:100%;max-width:480px;border-radius:20px 20px 0 0;padding:18px;padding-bottom:calc(18px + env(safe-area-inset-bottom,0px));box-shadow:0 -8px 30px rgba(0,0,0,0.25);">
+            <div style="text-align:center;font-weight:800;color:var(--text);margin-bottom:14px;font-size:0.95rem;">📸 Add a photo of the problem</div>
+            <button id="img-take" style="width:100%;display:flex;align-items:center;gap:12px;padding:14px;border:1px solid rgba(99,102,241,0.4);border-radius:14px;background:rgba(99,102,241,0.10);color:var(--text);font-weight:700;font-size:0.92rem;cursor:pointer;margin-bottom:10px;">
+                <span style="font-size:1.4rem;">📷</span> Take a Photo
+            </button>
+            <button id="img-gallery" style="width:100%;display:flex;align-items:center;gap:12px;padding:14px;border:1px solid var(--card-border,rgba(0,0,0,0.1));border-radius:14px;background:rgba(0,0,0,0.04);color:var(--text);font-weight:700;font-size:0.92rem;cursor:pointer;margin-bottom:10px;">
+                <span style="font-size:1.4rem;">🖼️</span> Choose from Gallery
+            </button>
+            <button id="img-cancel" style="width:100%;padding:12px;border:none;border-radius:14px;background:transparent;color:var(--text-dim);font-weight:700;font-size:0.86rem;cursor:pointer;">Cancel</button>
+        </div>`;
+    document.body.appendChild(overlay);
+
+    const close = () => overlay.remove();
+    overlay.addEventListener('click', e => { if (e.target === overlay) close(); });
+    overlay.querySelector('#img-cancel').addEventListener('click', close);
+    overlay.querySelector('#img-take').addEventListener('click', () => {
+        close();
+        imgFileInput.setAttribute('capture', 'environment'); // open the live camera
+        imgFileInput.click();
+    });
+    overlay.querySelector('#img-gallery').addEventListener('click', () => {
+        close();
+        imgFileInput.removeAttribute('capture'); // open the gallery / file picker
+        imgFileInput.click();
+    });
+}
 
 imgFileInput.addEventListener('change', async () => {
     const file = imgFileInput.files && imgFileInput.files[0];
@@ -1213,9 +1256,10 @@ async function playNarration(stepTexts, stepAudios, lang) {
     const audios = (stepAudios && stepAudios.length > 0) ? stepAudios : [];
 
     if (texts.length === 0) return;
+    userBargedIn = false; // fresh narration — clear any stale barge-in flag
 
     for (let i = 0; i < texts.length; i++) {
-        if (isStopped || pendingBargeInText) break;
+        if (isStopped || pendingBargeInText || userBargedIn) break;
         const audio = audios[i] || null;
         // Bug 2: auto-detect script per step so Urdu-script text gets ur-PK and
         // Latin-script Roman Urdu gets en-US (ElevenLabs reads Latin as English).
@@ -1223,7 +1267,7 @@ async function playNarration(stepTexts, stepAudios, lang) {
         const textLang = audio ? lang : (/[؀-ۿ]/.test(texts[i]) ? 'ur-PK' : 'en-US');
         await speak(texts[i], audio, textLang);
         // Short pause between narration steps so they feel distinct
-        if (i < texts.length - 1 && !isStopped && !pendingBargeInText) {
+        if (i < texts.length - 1 && !isStopped && !pendingBargeInText && !userBargedIn) {
             await new Promise(r => setTimeout(r, 250));
         }
     }
