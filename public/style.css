@@ -858,6 +858,7 @@ header {
 }
 .input-area input {
     flex: 1;
+    min-width: 0;  /* let the text box shrink so the mic + send buttons never get pushed off-screen */
     background: rgba(0,0,0,0.04);
     border: 1px solid rgba(0,0,0,0.09);
     border-radius: 14px;
