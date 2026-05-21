@@ -18,6 +18,7 @@ const fs         = require('fs');
 const cors       = require('cors');
 const { orchestrate } = require('./orchestrator');
 const ElevenLabsService = require('./voiceService');
+const { GoogleGenerativeAI } = require('@google/generative-ai');
 
 const app  = express();
 const PORT = parseInt(process.env.PORT, 10) || 3005;
@@ -30,7 +31,8 @@ const voiceService = new ElevenLabsService(
 );
 
 app.use(cors({ origin: '*', methods: ['GET', 'POST'], allowedHeaders: ['Content-Type'] }));
-app.use(express.json());
+// Limit bumped to 15mb so base64 image uploads (/api/analyze-image) fit
+app.use(express.json({ limit: '15mb' }));
 app.use(express.static(path.join(__dirname, 'public')));
 
 // ─── API: Create / resume a conversation session ──────────────────
@@ -299,6 +301,57 @@ app.post('/api/rate', (req, res) => {
     : `😔 Low rating noted. Support team will follow up. Payment held pending review.`;
 
   res.json({ success: true, message: paymentMsg, rating });
+});
+
+// ─── API: Analyze a photo of the user's problem (Gemini Vision) ───
+async function analyzeServiceImage(imageBase64, mimeType) {
+  const keys = (process.env.GEMINI_API_KEYS || process.env.GEMINI_API_KEY || '')
+    .split(',').map(k => k.trim()).filter(Boolean);
+  if (!keys.length) throw new Error('No Gemini API keys configured');
+
+  const prompt = `You are Fixr, a home-services assistant for Islamabad & Rawalpindi, Pakistan.
+Look at this photo of a household or vehicle problem and decide which ONE local service is needed.
+Respond ONLY as JSON: {"service":"<one of: Plumber, Electrician, AC Technician, Carpenter, Painter, Car Mechanic, Bike Mechanic, Appliance Repair, Pest Control, Mason, Welder, Cleaner, Generator Repair, Mobile Repair>","problem":"<one short sentence in Roman Urdu describing what you see>"}`;
+
+  let lastErr;
+  for (const key of keys) {
+    try {
+      const genAI = new GoogleGenerativeAI(key);
+      const model = genAI.getGenerativeModel({
+        model: 'gemini-2.5-flash',
+        generationConfig: { responseMimeType: 'application/json', temperature: 0.3 },
+      });
+      const result = await model.generateContent([
+        { text: prompt },
+        { inlineData: { mimeType: mimeType || 'image/jpeg', data: imageBase64 } },
+      ]);
+      return JSON.parse(result.response.text());
+    } catch (err) {
+      lastErr = err;
+      console.warn('[analyzeImage] key failed:', err.message);
+    }
+  }
+  throw lastErr || new Error('Image analysis failed');
+}
+
+app.post('/api/analyze-image', async (req, res) => {
+  const { imageBase64, mimeType } = req.body;
+  if (!imageBase64) return res.status(400).json({ error: 'No image provided' });
+  try {
+    const analysis = await analyzeServiceImage(imageBase64, mimeType);
+    const service = (analysis.service || '').trim() || 'a technician';
+    const problem = (analysis.problem || '').trim();
+    res.json({
+      success: true,
+      service,
+      reply: problem
+        ? `📸 Maine aap ki tasveer dekhi — ${problem} Lagta hai aap ko ${service} chahiye.`
+        : `📸 Maine aap ki tasveer dekhi — lagta hai aap ko ${service} chahiye.`,
+    });
+  } catch (err) {
+    console.error('[Server] /api/analyze-image error:', err.message);
+    res.status(500).json({ error: 'Could not analyze image', details: err.message });
+  }
 });
 
 // ─── Serve app ─────────────────────────────────────────────────

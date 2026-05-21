@@ -1110,6 +1110,100 @@ document.querySelectorAll('.service-card').forEach(card => {
 });
 
 // ══════════════════════════════════════════════════════════════
+// CAMERA — snap a photo of the problem, AI detects the service
+// ══════════════════════════════════════════════════════════════
+const imgFileInput = document.createElement('input');
+imgFileInput.type = 'file';
+imgFileInput.accept = 'image/*';
+imgFileInput.style.display = 'none';
+document.body.appendChild(imgFileInput);
+
+imgBtn?.addEventListener('click', () => {
+    if (isProcessing) return;
+    imgFileInput.click();
+});
+
+imgFileInput.addEventListener('change', async () => {
+    const file = imgFileInput.files && imgFileInput.files[0];
+    imgFileInput.value = ''; // reset so the same file can be picked again
+    if (file) await handleImageUpload(file);
+});
+
+// Downscale + compress the photo so the upload stays small and fast
+function resizeImage(file, maxDim = 1024, quality = 0.8) {
+    return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => {
+            const img = new Image();
+            img.onload = () => {
+                let w = img.width, h = img.height;
+                if (w > h && w > maxDim)        { h = Math.round(h * maxDim / w); w = maxDim; }
+                else if (h >= w && h > maxDim)  { w = Math.round(w * maxDim / h); h = maxDim; }
+                const canvas = document.createElement('canvas');
+                canvas.width = w; canvas.height = h;
+                canvas.getContext('2d').drawImage(img, 0, 0, w, h);
+                resolve(canvas.toDataURL('image/jpeg', quality));
+            };
+            img.onerror = reject;
+            img.src = reader.result;
+        };
+        reader.onerror = reject;
+        reader.readAsDataURL(file);
+    });
+}
+
+async function handleImageUpload(file) {
+    if (isProcessing) return;
+    let dataUrl;
+    try {
+        dataUrl = await resizeImage(file);
+    } catch (e) {
+        console.error('[image] resize failed', e);
+        return;
+    }
+    const base64 = dataUrl.split(',')[1];
+
+    // Show the conversation: jump to Chat, post the photo, show an analyzing cue
+    document.querySelector('.nav-btn[data-target="chat-container"]')?.click();
+    appendMessage(`<img src="${dataUrl}" alt="uploaded photo" style="max-width:190px;border-radius:12px;display:block;">`, 'user-message');
+    const analyzingDiv = appendMessage('🔍 Analyzing your photo…', 'bot-message');
+    analyzingDiv.style.fontStyle = 'italic';
+    analyzingDiv.style.opacity   = '0.9';
+
+    isProcessing = true;
+    setStatus('🧠 Analyzing photo...', '#f59e0b');
+
+    try {
+        const r = await fetch('/api/analyze-image', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ imageBase64: base64, mimeType: 'image/jpeg' }),
+        });
+        const data = await r.json();
+        analyzingDiv.remove();
+        setStatus('AI Ready', '#10b981');
+        isProcessing = false;
+
+        if (data && data.success) {
+            appendMessage(data.reply, 'bot-message');
+            // Kick off the normal search flow for the detected service
+            if (data.service) {
+                inputMode = 'text';
+                processUserInput('Mujhe ' + data.service + ' chahiye');
+            }
+        } else {
+            appendMessage('❌ Photo samajh nahi aa saki — dobara koshish karein ya likh kar bata dein.', 'bot-message');
+        }
+    } catch (e) {
+        analyzingDiv.remove();
+        isProcessing = false;
+        setStatus('Error ⚠️', '#ef4444');
+        appendMessage('❌ Photo analyze nahi ho saki. Internet check karke dobara try karein.', 'bot-message');
+        console.error('[image] analyze failed', e);
+    }
+}
+
+// ══════════════════════════════════════════════════════════════
 // SEQUENTIAL NARRATION PLAYER
 // Plays step texts one-by-one with barge-in support between each.
 // This gives the feel of real-time reasoning narration.

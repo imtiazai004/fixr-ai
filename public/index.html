@@ -17,7 +17,7 @@
     <!-- iOS: icon shown on home screen when user taps Share → Add to Home Screen -->
     <link rel="apple-touch-icon" href="/icons/fixr-icon.svg">
 
-    <link rel="stylesheet" href="style.css?v=15">
+    <link rel="stylesheet" href="style.css?v=16">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
@@ -33,6 +33,7 @@
                 <span class="logo-text">Fixr</span>
             </div>
             <div class="header-status" id="app-status">AI Ready</div>
+            <button id="lang-btn" class="header-lang-btn" title="Switch language">EN</button>
             <button id="stop-btn" class="stop-btn" title="Stop all Fixr activity">
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><rect x="3" y="3" width="18" height="18" rx="3"/></svg>
             </button>
@@ -307,7 +308,6 @@
             <input type="text" id="user-input" placeholder="Type your request..."
                    inputmode="text" autocomplete="off" autocorrect="off"
                    autocapitalize="off" spellcheck="false">
-            <button id="lang-btn" class="lang-toggle-btn">EN</button>
             <button id="mic-btn" class="input-icon-btn mic-btn">🎤</button>
             <button id="send-btn" class="send-btn-main">
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22,2 15,22 11,13 2,9"/></svg>
@@ -355,6 +355,6 @@
     </div><!-- end mobile-container -->
 
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
-    <script src="app.js?v=25"></script>
+    <script src="app.js?v=26"></script>
 </body>
 </html>

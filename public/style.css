@@ -159,6 +159,23 @@ header {
     50% { box-shadow: 0 0 0 6px rgba(239,68,68,0); }
 }
 
+/* Language toggle — lives in the header (moved out of the input bar) */
+.header-lang-btn {
+    height: 34px;
+    padding: 0 12px;
+    border-radius: 10px;
+    border: 1px solid rgba(99,102,241,0.3);
+    background: rgba(99,102,241,0.08);
+    color: var(--primary);
+    font-size: 0.68rem;
+    font-weight: 800;
+    letter-spacing: 0.5px;
+    cursor: pointer;
+    flex-shrink: 0;
+    transition: all 0.2s;
+}
+.header-lang-btn:hover { background: rgba(99,102,241,0.18); }
+
 /* ── TAB CONTENT ── */
 .tab-content {
     flex: 1;
@@ -1084,7 +1101,7 @@ header {
 /* Prevent text selection flicker on interactive tap areas */
 button, .service-card, .voice-card, .nav-btn, .nav-icon,
 .home-provider-card, .input-icon-btn, .send-btn-main,
-.lang-pill, .lang-toggle-btn, .stop-btn, .pipeline-node {
+.lang-pill, .lang-toggle-btn, .header-lang-btn, .stop-btn, .pipeline-node {
     touch-action: manipulation;
     user-select: none;
     -webkit-user-select: none;
