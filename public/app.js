@@ -337,7 +337,7 @@ function startWakeWordListening() {
     try {
         recognition.start();
         // Show a subtle mic indicator so user knows background listening is active
-        setStatus('🎙 AI Ready', '#10b981');
+        setStatus('AI Ready', '#10b981');
     } catch(e) { /* InvalidStateError = already started, ignore */ }
 }
 
@@ -526,7 +526,7 @@ function restartListeningAfterSpeech(isUrdu = false) {
                 setStatus('Awaiting your reply... 🎙️', '#a855f7');
             } else {
                 wakeWordModeActive = true;
-                setStatus('🎙 AI Ready', '#10b981');
+                setStatus('AI Ready', '#10b981');
             }
             if (!isRecognitionRunning) startRecognition(isUrdu ? 'ur-PK' : 'en-US');
         }
@@ -674,6 +674,7 @@ if (SpeechRecognition) {
         //   "Hi Fix", plus phonetic variants the browser might transcribe.
         // The regex uses word boundaries so "fix" in "prefix" does NOT trigger.
         // Keeping it broad because browsers often transcribe "Fixr" as just "fix".
+        const wakeWordCount = anyText.split(/\s+/).filter(Boolean).length;
         const hasWakeWord =
             // Core pattern: optional greeting + any spelling of Fixr/Fixer/Fix
             /\b(hey\s+|hello\s+|hi\s+|ok\s+)?fix[re]?r?\b/i.test(anyText) ||
@@ -693,18 +694,26 @@ if (SpeechRecognition) {
             anyText.includes('hello fixer')||
             anyText.includes('hello fix')  ||
             anyText.includes('ok fixr')    ||
-            anyText.includes('ok fixer');
+            anyText.includes('ok fixer')   ||
+            // Chrome very often mis-transcribes the spoken word "Fixr" as one of
+            // these everyday words. Only treat them as a wake word inside a SHORT
+            // utterance, so a normal sentence ("send me a picture") never triggers.
+            (wakeWordCount <= 3 && (
+                anyText.includes('picture')  ||
+                anyText.includes('pictures') ||
+                anyText.includes('fixture')  ||
+                anyText.includes('fixtures') ||
+                anyText.includes('pixar')    ||
+                anyText.includes('fixed')    ||
+                anyText.includes('fix it')
+            ));
 
-        // Debug: briefly flash what the mic heard in the status bar.
-        // This lets the user see EXACTLY what Chrome is transcribing when they say "Fixr".
-        // If wake word never triggers, they can see what word Chrome is hearing instead.
+        // Debug logging only. We deliberately do NOT flash the heard text in the
+        // status bar — that updated the badge on every bit of background noise and
+        // made the mic look like it was flickering on/off. The silent wake-word
+        // cycle now leaves the status untouched so "AI Ready" stays stable.
         if (wakeWordModeActive && finalText && finalText.length > 0) {
             console.log('[WakeWord] heard:', JSON.stringify(anyText), '| match:', hasWakeWord);
-            setStatus('👂 "' + finalText.slice(0, 18) + '"', '#94a3b8');
-            // Reset back to mic-ready indicator after 2s
-            setTimeout(() => {
-                if (wakeWordModeActive && !isProcessing) setStatus('🎙 AI Ready', '#10b981');
-            }, 2000);
         }
 
         if (hasWakeWord) {
@@ -714,6 +723,9 @@ if (SpeechRecognition) {
                 const afterWake = finalText
                     .replace(/\b(hey|hello|hi|ok)\s+/gi, '')
                     .replace(/\bfix[re]?r?[,!\s]*/gi, '')
+                    // Strip the mis-transcribed forms of "Fixr" too, otherwise a
+                    // bare "picture" (= "Fixr") would be sent as a real command.
+                    .replace(/\b(pictures?|fixtures?|pixar|fixed|fix it)[,!\s]*/gi, '')
                     .trim();
                 showWakeEffect();
                 userInput.value = '';
