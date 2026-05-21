@@ -17,7 +17,7 @@
     <!-- iOS: icon shown on home screen when user taps Share → Add to Home Screen -->
     <link rel="apple-touch-icon" href="/icons/fixr-icon.svg">
 
-    <link rel="stylesheet" href="style.css?v=12">
+    <link rel="stylesheet" href="style.css?v=13">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
@@ -73,36 +73,44 @@
             <!-- Quick Service Grid -->
             <div class="section-label">Quick Services</div>
             <div class="services-grid">
-                <div class="service-card" data-service="Plumber">
-                    <span class="svc-icon">🔧</span>
+                <div class="service-card" data-service="Plumber"
+                     style="--svc-color:#3b82f6;--svc-bg:rgba(59,130,246,0.12);--svc-shadow:rgba(59,130,246,0.25);">
+                    <div class="svc-icon-wrap">🔧</div>
                     <span class="svc-name">Plumber</span>
                 </div>
-                <div class="service-card" data-service="Electrician">
-                    <span class="svc-icon">⚡</span>
-                    <span class="svc-name">Electrician</span>
+                <div class="service-card" data-service="Electrician"
+                     style="--svc-color:#f59e0b;--svc-bg:rgba(245,158,11,0.12);--svc-shadow:rgba(245,158,11,0.25);">
+                    <div class="svc-icon-wrap">⚡</div>
+                    <span class="svc-name">Electric</span>
                 </div>
-                <div class="service-card" data-service="AC Technician">
-                    <span class="svc-icon">❄️</span>
+                <div class="service-card" data-service="AC Technician"
+                     style="--svc-color:#06b6d4;--svc-bg:rgba(6,182,212,0.12);--svc-shadow:rgba(6,182,212,0.25);">
+                    <div class="svc-icon-wrap">❄️</div>
                     <span class="svc-name">AC Tech</span>
                 </div>
-                <div class="service-card" data-service="Car Mechanic">
-                    <span class="svc-icon">🚗</span>
+                <div class="service-card" data-service="Car Mechanic"
+                     style="--svc-color:#10b981;--svc-bg:rgba(16,185,129,0.12);--svc-shadow:rgba(16,185,129,0.25);">
+                    <div class="svc-icon-wrap">🚗</div>
                     <span class="svc-name">Mechanic</span>
                 </div>
-                <div class="service-card" data-service="Carpenter">
-                    <span class="svc-icon">🪚</span>
+                <div class="service-card" data-service="Carpenter"
+                     style="--svc-color:#f97316;--svc-bg:rgba(249,115,22,0.12);--svc-shadow:rgba(249,115,22,0.25);">
+                    <div class="svc-icon-wrap">🪚</div>
                     <span class="svc-name">Carpenter</span>
                 </div>
-                <div class="service-card" data-service="Maid / Cleaner">
-                    <span class="svc-icon">🧹</span>
+                <div class="service-card" data-service="Maid / Cleaner"
+                     style="--svc-color:#a855f7;--svc-bg:rgba(168,85,247,0.12);--svc-shadow:rgba(168,85,247,0.25);">
+                    <div class="svc-icon-wrap">🧹</div>
                     <span class="svc-name">Cleaner</span>
                 </div>
-                <div class="service-card" data-service="Medical Store">
-                    <span class="svc-icon">💊</span>
+                <div class="service-card" data-service="Medical Store"
+                     style="--svc-color:#ef4444;--svc-bg:rgba(239,68,68,0.12);--svc-shadow:rgba(239,68,68,0.25);">
+                    <div class="svc-icon-wrap">💊</div>
                     <span class="svc-name">Pharmacy</span>
                 </div>
-                <div class="service-card" data-service="Cook / Chef">
-                    <span class="svc-icon">👨‍🍳</span>
+                <div class="service-card" data-service="Cook / Chef"
+                     style="--svc-color:#ec4899;--svc-bg:rgba(236,72,153,0.12);--svc-shadow:rgba(236,72,153,0.25);">
+                    <div class="svc-icon-wrap">👨‍🍳</div>
                     <span class="svc-name">Cook</span>
                 </div>
             </div>
@@ -240,6 +248,6 @@
     </div><!-- end mobile-container -->
 
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
-    <script src="app.js?v=18"></script>
+    <script src="app.js?v=19"></script>
 </body>
 </html>

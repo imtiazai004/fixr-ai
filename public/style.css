@@ -164,13 +164,13 @@ header {
     flex: 1;
     min-height: 0;          /* ← THE critical fix: without this, flex children
                                refuse to scroll and overflow the parent instead */
-    overflow-y: auto;
+    overflow-y: scroll;     /* scroll (not auto) forces scrollable layer on Android */
     overflow-x: hidden;
     display: none;
     flex-direction: column;
     gap: 14px;
-    padding: 18px 16px;
-    /* Smooth momentum scroll on iOS */
+    padding: 18px 16px 24px; /* extra bottom padding so last card isn't flush */
+    /* Smooth momentum scroll on iOS + Android */
     -webkit-overflow-scrolling: touch;
     overscroll-behavior: contain; /* prevent scroll chaining to parent */
     scroll-behavior: smooth;
@@ -198,15 +198,27 @@ header {
 .home-hero {
     text-align: center;
     padding: 4px 0 2px;
+    animation: heroFadeIn 0.6s ease-out both;
+}
+@keyframes heroFadeIn {
+    from { opacity: 0; transform: translateY(-8px); }
+    to   { opacity: 1; transform: translateY(0); }
 }
 .hero-title {
-    font-size: 1.4rem;
+    font-size: 1.45rem;
     font-weight: 800;
-    background: linear-gradient(135deg, #3730a3, #7c3aed 60%, #a855f7);
+    background: linear-gradient(135deg, #3730a3, #7c3aed 50%, #a855f7);
     -webkit-background-clip: text;
     -webkit-text-fill-color: transparent;
     background-clip: text;
     letter-spacing: -0.5px;
+    /* Subtle shimmer animation on the text */
+    background-size: 200% 200%;
+    animation: heroShimmer 4s ease-in-out infinite;
+}
+@keyframes heroShimmer {
+    0%,100% { background-position: 0% 50%; }
+    50%      { background-position: 100% 50%; }
 }
 .hero-sub {
     font-size: 0.78rem;
@@ -394,32 +406,63 @@ header {
     grid-template-columns: repeat(4, 1fr);
     gap: 10px;
 }
+
+/* Each card gets its own accent via a CSS custom property set inline */
 .service-card {
     background: var(--card);
-    border: 1px solid var(--card-border);
-    border-radius: 16px;
-    padding: 14px 6px;
+    border: 2px solid transparent;
+    border-radius: 18px;
+    padding: 14px 6px 12px;
     display: flex;
     flex-direction: column;
     align-items: center;
-    gap: 7px;
+    gap: 8px;
     cursor: pointer;
-    transition: all 0.2s ease;
+    transition: all 0.22s cubic-bezier(0.34, 1.56, 0.64, 1);
+    position: relative;
+    overflow: hidden;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+}
+/* Coloured top-edge accent line */
+.service-card::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 3px;
+    background: var(--svc-color, var(--primary));
+    border-radius: 18px 18px 0 0;
+}
+/* Icon circle */
+.service-card .svc-icon-wrap {
+    width: 44px;
+    height: 44px;
+    border-radius: 14px;
+    background: var(--svc-bg, rgba(99,102,241,0.1));
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.4rem;
+    transition: transform 0.22s cubic-bezier(0.34, 1.56, 0.64, 1);
 }
 .service-card:hover {
-    background: rgba(99,102,241,0.12);
-    border-color: rgba(99,102,241,0.3);
-    transform: translateY(-3px);
-    box-shadow: 0 8px 20px rgba(99,102,241,0.2);
+    border-color: var(--svc-color, var(--primary));
+    transform: translateY(-4px);
+    box-shadow: 0 10px 24px var(--svc-shadow, rgba(99,102,241,0.22));
 }
-.service-card:active { transform: scale(0.95); }
+.service-card:hover .svc-icon-wrap {
+    transform: scale(1.15) rotate(-5deg);
+}
+.service-card:active { transform: scale(0.94); }
+
+/* Legacy .svc-icon (for cards without .svc-icon-wrap) */
 .svc-icon { font-size: 1.5rem; }
 .svc-name {
-    font-size: 0.62rem;
-    font-weight: 600;
+    font-size: 0.6rem;
+    font-weight: 700;
     color: var(--text-dim);
     text-align: center;
     line-height: 1.2;
+    letter-spacing: 0.1px;
 }
 
 /* ═══════════════════════════════

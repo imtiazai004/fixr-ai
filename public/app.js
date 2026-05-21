@@ -934,6 +934,9 @@ micBtn?.addEventListener('click', () => {
     isStopped = false;
     micPermissionDenied = false; // User tapped mic — give permission another chance
     wakeWordModeActive = false; // Now accept all speech as commands
+    // Overlap fix: clear old search results so they don't persist behind new voice input
+    const _hr = document.getElementById('home-results');
+    if (_hr) _hr.style.display = 'none';
 
     if (!isRecognitionRunning && !isAgentSpeaking) {
         // Edge case: recognition stopped (e.g. after explicit stop or iOS timeout)
@@ -958,6 +961,11 @@ if (voiceSearchCard) {
         inputMode = 'voice';
         isStopped = false;
         wakeWordModeActive = false; // Switch to active command mode (accept all speech)
+
+        // Overlap fix: hide any results panel from a previous search so the
+        // home screen starts fresh when the user initiates a new voice request.
+        const _hr = document.getElementById('home-results');
+        if (_hr) _hr.style.display = 'none';
 
         // Show active listening UI on the voice card itself
         const voiceCard2     = document.getElementById('voice-search-card');
