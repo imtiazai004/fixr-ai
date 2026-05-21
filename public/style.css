@@ -176,6 +176,24 @@ header {
 }
 .header-lang-btn:hover { background: rgba(99,102,241,0.18); }
 
+/* Header icon button — chat history */
+.header-icon-btn {
+    width: 34px;
+    height: 34px;
+    border-radius: 10px;
+    border: 1px solid rgba(0,0,0,0.1);
+    background: rgba(0,0,0,0.04);
+    color: var(--text);
+    font-size: 0.95rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    flex-shrink: 0;
+    transition: all 0.2s;
+}
+.header-icon-btn:hover { background: rgba(0,0,0,0.1); }
+
 /* ── TAB CONTENT ── */
 .tab-content {
     flex: 1;

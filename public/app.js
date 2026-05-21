@@ -303,6 +303,128 @@ function showChatWelcome() {
     chatContainer.appendChild(wrap);
 }
 
+// ══════════════════════════════════════════════════════════════
+// CHAT HISTORY — every topic is its own conversation, saved locally
+// so old context never bleeds into (and misguides) a new request.
+// ══════════════════════════════════════════════════════════════
+let chats = [];
+let currentChatId = null;
+try { chats = JSON.parse(localStorage.getItem('fixr_chats')) || []; } catch (e) { chats = []; }
+
+function persistChats() {
+    try { localStorage.setItem('fixr_chats', JSON.stringify(chats.slice(0, 25))); } catch (e) {}
+}
+
+function chatEscapeHtml(s) {
+    const d = document.createElement('div');
+    d.textContent = s || '';
+    return d.innerHTML;
+}
+
+function chatTimeAgo(ts) {
+    if (!ts) return '';
+    const s = Math.floor((Date.now() - ts) / 1000);
+    if (s < 60)    return 'Just now';
+    if (s < 3600)  return Math.floor(s / 60) + ' min ago';
+    if (s < 86400) return Math.floor(s / 3600) + ' hr ago';
+    return Math.floor(s / 86400) + ' day(s) ago';
+}
+
+// Snapshot the current conversation into history — called after every turn
+function saveCurrentChat() {
+    if (!chatContainer) return;
+    const firstUser = chatContainer.querySelector('.user-message');
+    if (!firstUser) return; // nothing meaningful in this chat yet
+    let title = (firstUser.textContent || '').trim() || '📷 Photo request';
+    title = title.slice(0, 44);
+    if (!currentChatId) currentChatId = 'chat-' + Date.now();
+    // Strip heavy base64 image data-URLs from the stored copy (localStorage is small)
+    const html = chatContainer.innerHTML.replace(/<img\b[^>]*>/gi, '📷 [photo]');
+    const existing = chats.find(c => c.id === currentChatId);
+    if (existing) {
+        existing.html = html;
+        existing.updatedAt = Date.now();
+    } else {
+        chats.unshift({ id: currentChatId, title, html, updatedAt: Date.now() });
+    }
+    persistChats();
+}
+
+// Start a brand-new conversation — fresh server session, zero old context
+function startNewChat() {
+    currentChatId = null;
+    sessionId = null;            // next request gets a clean orchestrator session
+    showChatWelcome();
+    document.querySelector('.nav-btn[data-target="chat-container"]')?.click();
+    setStatus('AI Ready', '#10b981');
+}
+
+// Re-open a saved conversation to view it
+function openChat(id) {
+    const chat = chats.find(c => c.id === id);
+    if (!chat || !chatContainer) return;
+    chatContainer.innerHTML = chat.html;
+    chatContainer.scrollTop = chatContainer.scrollHeight;
+    currentChatId = id;
+    sessionId = null;            // a follow-up here starts a fresh server session
+    document.querySelector('.nav-btn[data-target="chat-container"]')?.click();
+}
+
+function deleteChat(id) {
+    chats = chats.filter(c => c.id !== id);
+    persistChats();
+}
+
+// Slide-up panel: "New Chat" button + the list of past conversations
+function showHistoryPanel() {
+    const old = document.getElementById('chat-history-panel');
+    if (old) old.remove();
+
+    const itemsHtml = chats.length === 0
+        ? '<div style="text-align:center;color:var(--text-dim);padding:22px 0;font-size:0.84rem;">Abhi koi purani chat nahi.</div>'
+        : chats.map(c => `
+            <div class="history-item" data-id="${c.id}" style="display:flex;align-items:center;gap:10px;padding:11px 12px;border:1px solid var(--card-border,rgba(0,0,0,0.1));border-radius:12px;margin-bottom:8px;cursor:pointer;background:rgba(0,0,0,0.02);">
+                <span style="font-size:1.05rem;">💬</span>
+                <div style="flex:1;min-width:0;">
+                    <div style="font-weight:700;color:var(--text);font-size:0.85rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${chatEscapeHtml(c.title)}</div>
+                    <div style="color:var(--text-dim);font-size:0.7rem;">${chatTimeAgo(c.updatedAt)}</div>
+                </div>
+                <button class="history-del" data-id="${c.id}" title="Delete" style="background:none;border:none;color:var(--text-dim);font-size:0.95rem;cursor:pointer;padding:4px 6px;">✕</button>
+            </div>`).join('');
+
+    const overlay = document.createElement('div');
+    overlay.id = 'chat-history-panel';
+    overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:9998;display:flex;flex-direction:column;justify-content:flex-end;';
+    overlay.innerHTML = `
+        <div style="background:var(--card,#fff);border-radius:20px 20px 0 0;padding:18px;padding-bottom:calc(18px + env(safe-area-inset-bottom,0px));max-height:80vh;display:flex;flex-direction:column;box-shadow:0 -8px 30px rgba(0,0,0,0.25);">
+            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;">
+                <span style="font-weight:800;color:var(--text);font-size:1rem;">Your Chats</span>
+                <button id="history-close" style="background:none;border:none;color:var(--text-dim);font-size:1.15rem;cursor:pointer;">✕</button>
+            </div>
+            <button id="history-new" style="width:100%;display:flex;align-items:center;justify-content:center;gap:8px;padding:13px;border:none;border-radius:14px;background:linear-gradient(135deg,var(--primary),var(--accent));color:#fff;font-weight:800;font-size:0.9rem;cursor:pointer;margin-bottom:14px;">➕ Start New Chat</button>
+            <div style="overflow-y:auto;flex:1;">${itemsHtml}</div>
+        </div>`;
+    document.body.appendChild(overlay);
+
+    const close = () => overlay.remove();
+    overlay.addEventListener('click', e => { if (e.target === overlay) close(); });
+    overlay.querySelector('#history-close').addEventListener('click', close);
+    overlay.querySelector('#history-new').addEventListener('click', () => { close(); startNewChat(); });
+    overlay.querySelectorAll('.history-del').forEach(btn => {
+        btn.addEventListener('click', e => {
+            e.stopPropagation();
+            deleteChat(btn.getAttribute('data-id'));
+            close();
+            showHistoryPanel();
+        });
+    });
+    overlay.querySelectorAll('.history-item').forEach(item => {
+        item.addEventListener('click', () => { close(); openChat(item.getAttribute('data-id')); });
+    });
+}
+
+document.getElementById('history-btn')?.addEventListener('click', showHistoryPanel);
+
 // ── Wake Word Background Listener ──────────────────────────────────────────
 // Silently starts recognition to listen for wake words:
 //   "Fixr", "Fixer", "Hey Fixr", "Hey Fixer", "Hello Fixr", "Hello Fixer"
@@ -1229,6 +1351,7 @@ async function handleImageUpload(file) {
 
         if (data && data.success) {
             appendMessage(data.reply, 'bot-message');
+            saveCurrentChat();
             // Kick off the normal search flow for the detected service
             if (data.service) {
                 inputMode = 'text';
@@ -1495,6 +1618,7 @@ async function processUserInput(text) {
     }
 
     isProcessing = false;
+    saveCurrentChat(); // snapshot this turn into chat history
 
     // Text mode: go back to silent wake-word listening
     if (inputMode === 'text' && !isStopped && !isRecognitionRunning && !isAgentSpeaking) {
