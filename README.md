@@ -1,6 +1,6 @@
-# KhidmatAI (ServiceAI v2)
+# Fixr (ServiceAI v2)
 
-KhidmatAI is an **Agentic Service Orchestrator** designed for the informal economy. It connects users with verified local service providers (AC technicians, electricians, plumbers, etc.) using a multi-agent system built on **Google Antigravity** principles.
+Fixr is an **Agentic Service Orchestrator** designed for the informal economy. It connects users with verified local service providers (AC technicians, electricians, plumbers, etc.) using a multi-agent system built on **Google Antigravity** principles.
 
 ## 🚀 Key Features
 - **Multi-Agent Orchestration**: 5 specialized agents (Intent, Discovery, Ranking, Booking, Follow-up) perform collaborative reasoning.

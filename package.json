@@ -1,16 +1,27 @@
 {
-  "name": "khidmatai",
+  "name": "fixr",
   "version": "2.0.0",
-  "description": "KhidmatAI — AI Service Orchestrator for Informal Economy (Google Antigravity Hackathon Challenge 2)",
+  "description": "Fixr — AI Service Orchestrator for Informal Economy (Google Antigravity Hackathon Challenge 2)",
   "main": "server.js",
   "scripts": {
     "start": "node server.js",
     "dev": "node server.js"
   },
   "dependencies": {
+    "@google/generative-ai": "^0.24.0",
+    "axios": "^1.16.1",
+    "cheerio": "^1.2.0",
+    "cors": "^2.8.6",
+    "dotenv": "^16.6.1",
     "express": "^4.18.2"
   },
-  "keywords": ["ai", "agents", "antigravity", "informal-economy", "pakistan"],
-  "author": "KhidmatAI Team",
+  "keywords": [
+    "ai",
+    "agents",
+    "antigravity",
+    "informal-economy",
+    "pakistan"
+  ],
+  "author": "Fixr Team",
   "license": "MIT"
 }

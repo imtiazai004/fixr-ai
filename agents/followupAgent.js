@@ -19,10 +19,10 @@ const FOLLOWUP_TEMPLATES = {
     `Rate your experience:\n⭐ 1 - Poor  |  ⭐⭐⭐ 3 - OK  |  ⭐⭐⭐⭐⭐ 5 - Excellent`,
 
   PAYMENT_RELEASED: (providerName, amount) =>
-    `💚 Payment of PKR ${amount} has been released to ${providerName}. Thank you for using KhidmatAI!`,
+    `💚 Payment of PKR ${amount} has been released to ${providerName}. Thank you for using Fixr!`,
 
   LOW_RATING_RESPONSE: () =>
-    `😔 We're sorry about your experience. A KhidmatAI support agent will follow up with you within 2 hours. Your concern has been escalated.`,
+    `😔 We're sorry about your experience. A Fixr support agent will follow up with you within 2 hours. Your concern has been escalated.`,
 
   HIGH_RATING_RESPONSE: (providerName) =>
     `🎉 Thank you for the great rating! ${providerName} has been notified and their profile score has been updated. See you next time!`,

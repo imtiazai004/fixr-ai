@@ -1,0 +1,64 @@
+# ── Node.js ──────────────────────────────────────────────────
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+package-lock.json
+
+# ── Environment variables (NEVER commit secrets) ──────────────
+.env
+.env.local
+.env.*.local
+backend/.env
+.env.vercel
+
+# ── Vercel ───────────────────────────────────────────────────
+.vercel
+
+# ── Runtime / logs ───────────────────────────────────────────
+data/trace.log
+*.log
+
+# ── OS files ─────────────────────────────────────────────────
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# ── Editor / IDE ─────────────────────────────────────────────
+.idea/
+*.iml
+*.ipr
+*.iws
+.atom/
+.history
+.svn/
+
+# ── Claude AI session data ───────────────────────────────────
+.claude/
+.metadata
+
+# ── Flutter / Dart (build artifacts only) ───────────────────
+/build/
+.dart_tool/
+.flutter-plugins-dependencies
+.pub-cache/
+.pub/
+**/doc/api/
+/coverage/
+app.*.symbols
+app.*.map.json
+.swiftpm/
+migrate_working_dir/
+.buildlog/
+.build/
+
+# Android Studio build artifacts
+/android/app/debug
+/android/app/profile
+/android/app/release
+**/ios/Flutter/.last_build_id
+
+# ── Misc ─────────────────────────────────────────────────────
+*.class
+*.pyc
+*.swp
