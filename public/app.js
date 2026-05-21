@@ -1181,7 +1181,11 @@ async function processUserInput(text) {
             }
 
         // ── Handle provider search results ──────────────────
-        } else if (data.rankedProviders && data.rankedProviders.length > 0) {
+        // Gate strictly on action === 'SEARCH'. The server back-fills
+        // rankedProviders from session context on EVERY turn (so CALL/BOOK can
+        // reference them), so length alone wrongly triggers this branch on
+        // conversational turns and renders stale cards under a clarifying question.
+        } else if (action === 'SEARCH' && data.rankedProviders && data.rankedProviders.length > 0) {
             appendMessage(data.reply, 'bot-message');
             appendProviderChoices(data.rankedProviders, isUrdu);
             renderHomeProviders(data.rankedProviders, providerList, isUrdu);
@@ -1214,7 +1218,10 @@ async function processUserInput(text) {
         stopBtn.classList.remove('active');
         setStatus('Error ⚠️', '#ef4444');
         appendMessage('❌ Server error. Is the server running on port 3005?', 'bot-message');
+        // Hide the whole results panel — otherwise it lingers as an empty card
+        // wedged between the voice card and Quick Services grid.
         if (searchingState) searchingState.style.display = 'none';
+        if (homeResults)    homeResults.style.display = 'none';
         console.error('[processUserInput]', err);
     }
 

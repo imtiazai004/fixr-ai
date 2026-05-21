@@ -301,65 +301,73 @@ function detectLanguage(text) {
 }
 
 // ─── Response Sanitizer ────────────────────────────────────────────────────────
-// Strips chain-of-thought reasoning that Gemini 2.5 sometimes leaks into its text.
-// Also removes tool_code artifacts and deduplicates repeated paragraphs.
+// Strips chain-of-thought reasoning that Gemini sometimes leaks into its text.
+// Works at sentence level: any sentence that reads as internal reasoning / meta-
+// commentary is dropped. The genuine user-facing reply is always what remains
+// (and is always the last sentence if reasoning was detected).
+const REASONING_MARKERS = [
+  'the user', "user's request", "user's response", 'user has', 'user said',
+  'user wrote', 'user responded', 'user switched', 'user is now', 'user input',
+  'i should', 'i need to', 'i will continue', 'i will use', 'i must',
+  'i need a location', "i'll ask", "i'll continue", 'i can ask',
+  'therefore, i', 'therefore i', 'clarifying question',
+  're-evaluate', 'reevaluate', "here's the response", 'here is the response',
+  'my response', 'the response in', 'in urdu script', 'in roman urdu',
+  'search results show', 'the search results', 'search_providers',
+  'should ask', 'should present', 'should continue', 'should use',
+  'appropriate question', 'most appropriate', 'previous turn',
+  'previous response', 'last input', 'last turn', 'last response',
+  'default_api', 'this indicates', 'to effectively use',
+  'to provide assistance', 'to provide any',
+];
+
 function sanitizeGeminiResponse(text) {
   if (!text) return '';
 
-  // 1. Strip tool_code blocks
+  // 1. Strip tool_code artifacts
   text = text
     .replace(/tool_code\s+print\s*\([\s\S]*?\)\s*/gi, '')
-    .replace(/\btool_code\b[^\n]*/gi, '');
+    .replace(/\btool_code\b[^\n]*/gi, '')
+    .trim();
 
   // 2. If the model prefixed "Here's the response in X:" — take what's after it
   const handoffMatch = text.match(
-    /(?:here(?:'s| is) (?:the |my )?(?:response|reply|answer)[\s\S]*?:|my response:|so my response is:)\s*([\s\S]+)/i
+    /(?:here(?:'s| is) (?:the |my )?(?:response|reply|answer)[^\n:]*:|my response is:|so my response is:|response in urdu script:|response in roman urdu:)\s*([\s\S]+)/i
   );
-  if (handoffMatch) {
-    text = handoffMatch[1];
-  }
+  if (handoffMatch) text = handoffMatch[1].trim();
 
-  // 3. Strip common reasoning opener lines at the START of the text.
-  //    These are always in English even when the user wrote in Urdu.
-  //    Match multi-line reasoning blocks: stop at first blank line or Urdu text.
-  text = text.replace(
-    /^(The user(?:'s)? [\s\S]*?(?:\n\n|(?=[؀-ۿ])))/,
-    ''
-  );
-  // Also strip single-line reasoning openers
-  const reasoningOpeners = [
-    /^The user(?:'s)? [^.!?]*[.!?]\s*/i,
-    /^I need to [^.!?]*[.!?]\s*/i,
-    /^Let me [^.!?]*[.!?]\s*/i,
-    /^To (?:provide|answer|respond|help) [^.!?]*[.!?]\s*/i,
-    /^Since the (?:previous|last) [^.!?]*[.!?]\s*/i,
-    /^Given (?:that|the) [^.!?]*[.!?]\s*/i,
-    /^Looking at [^.!?]*[.!?]\s*/i,
-    /^Based on [^.!?]*[.!?]\s*/i,
-  ];
-  let changed = true;
-  while (changed) {
-    changed = false;
-    for (const re of reasoningOpeners) {
-      const before = text;
-      text = text.replace(re, '');
-      if (text !== before) { changed = true; break; }
-    }
-  }
+  // 3. Gemini sometimes omits the space after a sentence-ender ("needed.Zaroor!").
+  //    Insert one so the sentence splitter works reliably.
+  text = text.replace(/([.!?؟])(?=[A-Z؀-ۿ])/g, '$1 ');
 
-  // 4. Deduplicate: if the same sentence appears more than once, keep only first occurrence
-  const sentences = text.split(/(?<=[.!?؟])\s+/);
+  const rawSentences = text.split(/(?<=[.!?؟])\s+/).map(s => s.trim()).filter(Boolean);
+  if (rawSentences.length <= 1) return text.trim();
+
+  // 4. Drop any sentence that reads as internal reasoning / meta-commentary
+  const isReasoning = (s) => {
+    const low = s.toLowerCase();
+    return REASONING_MARKERS.some(m => low.includes(m));
+  };
+  const hasAnyReasoning = rawSentences.some(isReasoning);
+
+  let kept = hasAnyReasoning ? rawSentences.filter(s => !isReasoning(s)) : rawSentences;
+  // If filtering removed everything, the genuine reply is the last sentence.
+  if (kept.length === 0) kept = [rawSentences[rawSentences.length - 1]];
+
+  // 5. Deduplicate repeated sentences
   const seen = new Set();
-  const deduped = sentences.filter(s => {
-    const key = s.trim().slice(0, 60).toLowerCase();
-    if (!key || seen.has(key)) return false;
+  let deduped = kept.filter(s => {
+    const key = s.slice(0, 50).toLowerCase();
+    if (seen.has(key)) return false;
     seen.add(key);
     return true;
   });
-  text = deduped.join(' ');
 
-  // 5. Final trim
-  return text.trim();
+  // 6. When reasoning was present, a genuine conversational reply is short —
+  //    keep only the final 1-2 sentences; anything earlier is leftover reasoning.
+  if (hasAnyReasoning && deduped.length > 2) deduped = deduped.slice(-2);
+
+  return deduped.join(' ').trim();
 }
 
 // ─── Main Export ─────────────────────────────────────────────────────────────────
@@ -402,13 +410,14 @@ async function orchestrate(userMessage, state = {}, userLocation = null, session
     try {
       const genAI = new GoogleGenerativeAI(keys[ki]);
       const model = genAI.getGenerativeModel({
-        model: 'gemini-2.5-flash-lite',
+        model: 'gemini-2.5-flash',
         tools: TOOL_DECLARATIONS,
         systemInstruction: SYSTEM_PROMPT,
         generationConfig: {
           temperature: 0.4,
-          maxOutputTokens: 300,   // Force short replies — reasoning gets long, real replies don't
-          // Disable thinking output — prevents chain-of-thought from leaking into response text
+          maxOutputTokens: 350,
+          // gemini-2.5-flash has thinking ON by default — disable it so chain-of-thought
+          // is never produced. (On flash-lite this flag was a no-op; on full flash it works.)
           thinkingConfig: { thinkingBudget: 0 },
         },
       });
@@ -659,6 +668,13 @@ async function orchestrate(userMessage, state = {}, userLocation = null, session
   } else if (finalText) {
     // Conversational reply — no tool called, speak the reply directly
     stepTexts.push(finalText);
+  }
+
+  // For action turns (SEARCH/BOOK/CALL) the chat reply is the clean, deterministic
+  // narration built above — NOT Gemini's raw text, which can leak chain-of-thought.
+  // Conversational turns keep the (already sanitized) Gemini reply.
+  if (detectedAction && stepTexts.length > 0) {
+    finalText = stepTexts.join(' ');
   }
 
   return {
