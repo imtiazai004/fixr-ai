@@ -59,6 +59,13 @@
                 <button id="home-lang-toggle" class="lang-pill">اردو</button>
             </div>
 
+            <!-- Opt-in hands-free wake word — OFF by default so the first load
+                 stays calm (no surprise mic prompt / no beep). -->
+            <button id="wake-toggle" type="button"
+                style="width:100%;background:var(--card);border:1px dashed var(--card-border);color:var(--text-dim);font-size:0.74rem;font-weight:700;padding:9px;border-radius:12px;cursor:pointer;transition:all 0.2s;">
+                🎙️ Enable "Hey Fixr" hands-free
+            </button>
+
             <!-- Results Container (shows while searching & after) -->
             <div id="home-results" class="home-results" style="display:none;">
                 <div class="searching-state" id="searching-state">
@@ -248,6 +255,6 @@
     </div><!-- end mobile-container -->
 
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
-    <script src="app.js?v=21"></script>
+    <script src="app.js?v=22"></script>
 </body>
 </html>

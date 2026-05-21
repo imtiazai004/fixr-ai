@@ -47,6 +47,8 @@ let wakeWordRestartTimer = null; // Timer to restart recognition for wake word l
 let inputMode          = 'text'; // 'voice' | 'text'
 let micPermissionDenied = false; // Set true on 'not-allowed' — stops infinite restart loop
 let voiceCardResetTimer = null;  // Timer ref for voice card idle reset (so we can cancel it)
+let wakeWordEnabled     = false; // Opt-in master switch: "Hey Fixr" background listening
+                                 // only runs after the user taps the wake-toggle.
 
 // ══════════════════════════════════════════════════════════════
 // PWA — Service Worker + Install Prompt
@@ -237,25 +239,11 @@ function showAudioToast() {
 // By also trying here (on first actual touch), iOS wake-word detection starts correctly.
 document.addEventListener('touchstart', () => {
     attemptUnlockAudio();
-    // Bug 6: was guarded by !voiceEverStarted which prevented restart after first use.
-    // Now restarts recognition on any touch if it isn't already running.
-    if (SpeechRecognition && !isRecognitionRunning && !isStopped && !micPermissionDenied && !isAgentSpeaking) {
-        setTimeout(() => {
-            if (!isRecognitionRunning && !isStopped && !micPermissionDenied) {
-                console.log('[WakeWord] Restarting after touch gesture');
-                startWakeWordListening();
-            }
-        }, 400); // Short delay so the gesture is fully registered
-    }
+    // Wake word is opt-in now — incidental touches no longer auto-start the mic.
 }, { passive: true });
 document.addEventListener('click', () => {
     attemptUnlockAudio();
-    // Also retry wake word recognition on any click if it failed to auto-start
-    if (SpeechRecognition && !isRecognitionRunning && !isStopped && !micPermissionDenied && !isAgentSpeaking) {
-        setTimeout(() => {
-            if (!isRecognitionRunning && !isStopped && !micPermissionDenied) startWakeWordListening();
-        }, 400);
-    }
+    // Wake word is opt-in now — incidental clicks no longer auto-start the mic.
 });
 
 // ── GPS ─────────────────────────────────────────────────────
@@ -330,8 +318,9 @@ let voiceEverStarted = false; // Becomes true once recognition has ever started
 let wakeWordModeActive = false; // True when listening silently for wake word
 
 function startWakeWordListening() {
-    // Don't start if: permission denied, already running, stopped, processing, or speaking
-    if (micPermissionDenied || !SpeechRecognition || isRecognitionRunning || isStopped || isProcessing || isAgentSpeaking) return;
+    // Opt-in: wake word only runs when the user has enabled the toggle.
+    // Don't start if: not enabled, permission denied, already running, stopped, processing, or speaking
+    if (!wakeWordEnabled || micPermissionDenied || !SpeechRecognition || isRecognitionRunning || isStopped || isProcessing || isAgentSpeaking) return;
     wakeWordModeActive = true;
     recognition.lang = activeSpeechLang;
     try {
@@ -341,15 +330,12 @@ function startWakeWordListening() {
     } catch(e) { /* InvalidStateError = already started, ignore */ }
 }
 
-// Delay auto-start slightly to let the page fully render and scripts settle
+// On load we do NOT auto-start the mic — that caused a surprise permission
+// prompt + flicker/beep on every first visit. The app stays calm ("AI Ready");
+// voice activates only when the user taps the mic or the "Hey Fixr" toggle.
 setTimeout(() => {
-    if (!SpeechRecognition) {
-        setStatus('Type your request 📝', '#94a3b8');
-        return;
-    }
-    startWakeWordListening();
-    // After first load, quietly indicate AI is ready
-    setStatus('AI Ready', '#10b981');
+    setStatus(SpeechRecognition ? 'AI Ready' : 'Type your request 📝',
+              SpeechRecognition ? '#10b981' : '#94a3b8');
 }, 1500);
 
 // ── Status Helper ───────────────────────────────────────────
@@ -917,8 +903,10 @@ function syncLanguageUI(lang) {
     if (sub)   sub.textContent   = isUrdu ? 'اردو · Roman Urdu · English' : 'English · Roman Urdu · اردو';
     if (userInput) userInput.placeholder = isUrdu ? 'اپنی ضرورت لکھیں...' : 'Type your request...';
 
-    // Bug 5: restart recognition with new language when user taps the toggle mid-session
-    if (recognition && isRecognitionRunning && !isAgentSpeaking && !isProcessing) {
+    // Bug 5: restart recognition with new language when user taps the toggle mid-session.
+    // Only when wake word is enabled — otherwise a language toggle would kill an
+    // active tap-to-talk session with nothing to restart.
+    if (wakeWordEnabled && recognition && isRecognitionRunning && !isAgentSpeaking && !isProcessing) {
         try { recognition.abort(); } catch(e) {}
         isRecognitionRunning = false;
         setTimeout(() => {
@@ -936,6 +924,53 @@ const langBtn = document.getElementById('lang-btn');
 if (langBtn) langBtn.addEventListener('click', e => { e.stopPropagation(); syncLanguageUI(activeSpeechLang === 'ur-PK' ? 'en-US' : 'ur-PK'); });
 const homeLangToggle = document.getElementById('home-lang-toggle');
 if (homeLangToggle) homeLangToggle.addEventListener('click', e => { e.stopPropagation(); syncLanguageUI(activeSpeechLang === 'ur-PK' ? 'en-US' : 'ur-PK'); });
+
+// ── Opt-in "Hey Fixr" wake-word toggle ──────────────────────────────────────
+// OFF by default → calm first load (no surprise mic prompt / beep).
+// When the user turns it ON, background "Hey Fixr" listening starts.
+const wakeToggle = document.getElementById('wake-toggle');
+function setWakeToggleUI() {
+    if (!wakeToggle) return;
+    if (wakeWordEnabled) {
+        wakeToggle.textContent       = '🎙️ "Hey Fixr" hands-free — ON';
+        wakeToggle.style.background  = 'rgba(16,185,129,0.12)';
+        wakeToggle.style.borderColor = 'rgba(16,185,129,0.55)';
+        wakeToggle.style.borderStyle = 'solid';
+        wakeToggle.style.color       = '#10b981';
+    } else {
+        wakeToggle.textContent       = '🎙️ Enable "Hey Fixr" hands-free';
+        wakeToggle.style.background  = 'var(--card)';
+        wakeToggle.style.borderColor = 'var(--card-border)';
+        wakeToggle.style.borderStyle = 'dashed';
+        wakeToggle.style.color       = 'var(--text-dim)';
+    }
+}
+if (wakeToggle) {
+    wakeToggle.addEventListener('click', e => {
+        e.stopPropagation();
+        if (!SpeechRecognition) {
+            setStatus('Voice not supported on this browser', '#ef4444');
+            return;
+        }
+        wakeWordEnabled = !wakeWordEnabled;
+        attemptUnlockAudio();
+        if (wakeWordEnabled) {
+            // User explicitly opted in — give the mic a fresh chance.
+            micPermissionDenied = false;
+            isStopped = false;
+            startWakeWordListening();
+        } else {
+            // Turn the background listener off.
+            wakeWordModeActive = false;
+            if (recognition && isRecognitionRunning && !isProcessing && !isAgentSpeaking) {
+                try { recognition.abort(); } catch (err) {}
+                isRecognitionRunning = false;
+            }
+            setStatus('AI Ready', '#10b981');
+        }
+        setWakeToggleUI();
+    });
+}
 
 // Mic button — user tapped: switch from silent wake-word mode → active listening
 // With continuous:true, recognition is already running. We just update the mode flag
