@@ -512,6 +512,38 @@ function completePipeline(message = 'Pipeline complete') {
     if (pipelineText) pipelineText.textContent = '✅ ' + message;
 }
 
+// ── Interactive pipeline nodes — tap a node to see what that agent does ──────
+const NODE_INFO = {
+    intent:    { icon: '🔍', name: 'Intent Agent',    desc: 'Aap ki baat samajh kar service, jagah aur waqt nikalta hai.' },
+    discovery: { icon: '🌐', name: 'Discovery Agent', desc: 'Google Maps se aas-paas ke asal providers dhoondta hai.' },
+    ranking:   { icon: '📊', name: 'Ranking Agent',   desc: 'Rating, distance aur availability se behtareen provider chunta hai.' },
+    booking:   { icon: '📅', name: 'Booking Agent',   desc: 'Aap ka slot confirm karke booking bana deta hai.' },
+    followup:  { icon: '🔔', name: 'Follow-up Agent', desc: 'Booking ke baad reminder aur updates set karta hai.' },
+};
+function showNodeInfo(key) {
+    const info = NODE_INFO[key];
+    if (!info) return;
+    const old = document.getElementById('node-info-pop');
+    if (old) old.remove();
+    const pop = document.createElement('div');
+    pop.id = 'node-info-pop';
+    pop.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.45);z-index:9998;display:flex;align-items:center;justify-content:center;padding:24px;';
+    pop.innerHTML = `
+        <div style="background:var(--card,#fff);border-radius:18px;padding:22px;max-width:320px;text-align:center;box-shadow:0 14px 44px rgba(0,0,0,0.32);">
+            <div style="font-size:2.4rem;">${info.icon}</div>
+            <div style="font-weight:800;color:var(--text);font-size:1.02rem;margin-top:6px;">${info.name}</div>
+            <div style="color:var(--text-dim);font-size:0.85rem;margin-top:8px;line-height:1.55;">${info.desc}</div>
+            <button id="node-info-close" style="margin-top:15px;padding:9px 26px;border:none;border-radius:10px;background:linear-gradient(135deg,var(--primary),var(--accent));color:#fff;font-weight:700;cursor:pointer;">Theek hai</button>
+        </div>`;
+    document.body.appendChild(pop);
+    const close = () => pop.remove();
+    pop.addEventListener('click', e => { if (e.target === pop) close(); });
+    pop.querySelector('#node-info-close').addEventListener('click', close);
+}
+['intent', 'discovery', 'ranking', 'booking', 'followup'].forEach(key => {
+    document.getElementById('node-' + key)?.addEventListener('click', () => showNodeInfo(key));
+});
+
 // ── Map Init ────────────────────────────────────────────────
 function initMap() {
     if (map) return;
@@ -1558,9 +1590,14 @@ async function processUserInput(text) {
         // ── Handle BOOKING ──────────────────────────────────
         } else if (action === 'BOOKING' || data.booking) {
             appendMessage(data.reply, 'bot-message');
-            const bookingProvider = (data.rankedProviders && data.rankedProviders.length > 0)
-                ? data.rankedProviders[0]
-                : (data.state?.recommendedProvider || null);
+            // Resolve the provider that was actually booked (not blindly #1)
+            const bookedName = data.booking && data.booking.provider && data.booking.provider.name;
+            const rp = data.rankedProviders || [];
+            const bookingProvider = (bookedName && rp.find(p => p.name && (
+                    p.name.toLowerCase() === bookedName.toLowerCase() ||
+                    p.name.toLowerCase().includes(bookedName.toLowerCase()) ||
+                    bookedName.toLowerCase().includes(p.name.toLowerCase()))))
+                || rp[0] || data.state?.recommendedProvider || null;
             if (data.booking) {
                 appendProviderCard(bookingProvider, data.booking, false);
                 updateDashboard(bookingProvider, data.booking, false);
@@ -1870,17 +1907,53 @@ function appendProviderCard(provider, booking, autoBook) {
     bookingCount++;
     if (statBookings) statBookings.textContent = bookingCount;
 
+    const rawPhone = provider?.phone || booking?.provider?.phone || '';
+    const phone    = rawPhone ? String(rawPhone).replace(/[^0-9+]/g, '') : '';
+    let   waPhone  = phone.replace(/\D/g, '');
+    if (waPhone.startsWith('0')) waPhone = '92' + waPhone.slice(1);
+    else if (waPhone.length === 10 && waPhone.startsWith('3')) waPhone = '92' + waPhone;
+
+    const sBtn = 'padding:8px 4px;border-radius:9px;border:1px solid var(--card-border,rgba(0,0,0,0.1));background:rgba(0,0,0,0.04);color:var(--text);font-size:0.72rem;font-weight:700;cursor:pointer;';
+
     const card = document.createElement('div');
     card.className = 'provider-card';
-    card.style.cssText = 'background:var(--card);border:1px solid rgba(16,185,129,0.3);border-radius:16px;padding:14px;margin-top:6px;';
+    card.style.cssText = 'background:var(--card);border:1px solid rgba(16,185,129,0.4);border-radius:16px;padding:14px;margin-top:6px;';
     card.innerHTML = `
-        <div style="font-weight:800;font-size:1rem;color:var(--text);">✅ ${name}</div>
-        <div style="color:var(--text-dim);font-size:0.8rem;margin-top:6px;">🚗 ETA: ${eta} min &nbsp;•&nbsp; 💰 PKR ${cost} &nbsp;•&nbsp; 🎫 ${bookId}</div>
-        <div style="display:flex;gap:8px;margin-top:10px;">
-            <button onclick="processUserInput('Track ${name}')" style="flex:1;padding:8px;border-radius:10px;border:none;background:var(--primary);color:white;font-weight:700;font-size:0.78rem;cursor:pointer;">📍 Track</button>
-            <button onclick="processUserInput('Call ${name}')" style="flex:1;padding:8px;border-radius:10px;border:none;background:#10b981;color:white;font-weight:700;font-size:0.78rem;cursor:pointer;">📞 Call</button>
-            <button onclick="openRatingModal('${bookId}')" style="flex:1;padding:8px;border-radius:10px;border:none;background:rgba(0,0,0,0.06);color:var(--text);border:1px solid rgba(0,0,0,0.1);font-weight:700;font-size:0.78rem;cursor:pointer;">⭐ Rate</button>
-        </div>`;
+        <div style="font-weight:800;font-size:0.95rem;color:#10b981;">✅ Booking Confirmed</div>
+        <div style="font-weight:700;font-size:0.95rem;color:var(--text);margin-top:5px;">${name}</div>
+        <div style="color:var(--text-dim);font-size:0.78rem;margin-top:5px;">🚗 ETA ${eta} min &nbsp;•&nbsp; 💰 PKR ${cost} &nbsp;•&nbsp; 🎫 ${bookId}</div>
+        <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px;margin-top:11px;">
+            <button data-act="call"  style="${sBtn}">📞 Call</button>
+            <button data-act="wa"    style="${sBtn}">💬 WhatsApp</button>
+            <button data-act="track" style="${sBtn}">📍 Track</button>
+        </div>
+        <button data-act="cancel" style="width:100%;margin-top:8px;padding:9px;border-radius:10px;border:1px solid rgba(239,68,68,0.4);background:rgba(239,68,68,0.08);color:#ef4444;font-weight:800;font-size:0.78rem;cursor:pointer;">🗑️ Cancel Booking</button>`;
+
+    card.querySelector('[data-act="call"]').addEventListener('click', () => {
+        if (phone) window.location.href = 'tel:' + phone;
+        else appendMessage('📞 Is provider ka phone number record par nahi.', 'bot-message');
+    });
+    card.querySelector('[data-act="wa"]').addEventListener('click', () => {
+        if (waPhone) window.open('https://wa.me/' + waPhone + '?text=' + encodeURIComponent('Assalam o Alaikum! Fixr app se booking ki hai.'), '_blank');
+        else appendMessage('💬 Is provider ka WhatsApp number record par nahi.', 'bot-message');
+    });
+    card.querySelector('[data-act="track"]').addEventListener('click', () => {
+        const q = (provider && provider.lat != null && provider.lng != null)
+            ? encodeURIComponent(provider.lat + ',' + provider.lng)
+            : encodeURIComponent(name + ' ' + ((provider && provider.location) || 'Islamabad'));
+        window.open('https://www.google.com/maps/search/?api=1&query=' + q, '_blank');
+    });
+    card.querySelector('[data-act="cancel"]').addEventListener('click', () => {
+        if (!confirm('Booking cancel karna chahte hain?')) return;
+        card.style.opacity = '0.55';
+        card.style.borderColor = 'rgba(239,68,68,0.4)';
+        card.querySelectorAll('button').forEach(b => { b.disabled = true; b.style.cursor = 'default'; });
+        appendMessage('🗑️ Aap ki booking <b>cancel</b> kar di gayi hai. Koi aur service chahiye to batayein.', 'bot-message');
+        bookingCount = Math.max(0, bookingCount - 1);
+        if (statBookings) statBookings.textContent = bookingCount;
+        if (activeBookingCard) activeBookingCard.innerHTML = '<p style="color:var(--text-muted);text-align:center;font-size:0.85rem;padding:10px 0;">No active booking.</p>';
+    });
+
     chatContainer.appendChild(card);
     chatContainer.scrollTop = chatContainer.scrollHeight;
 }

@@ -725,7 +725,27 @@ header {
     transition: color 0.3s ease;
     padding: 0 1px;
 }
-.pipeline-arrow.active { color: var(--primary); }
+.pipeline-arrow.active {
+    color: var(--primary);
+    animation: arrowFlow 0.9s ease-in-out infinite;
+}
+@keyframes arrowFlow {
+    0%,100% { opacity: 0.45; }
+    50%     { opacity: 1; }
+}
+
+/* ── Pipeline polish — gradient title & lively container ── */
+.pipeline-title {
+    background: linear-gradient(135deg, #6366f1, #a855f7 55%, #06b6d4);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+}
+.pipeline-visual {
+    background: linear-gradient(160deg, var(--card) 58%, rgba(99,102,241,0.08));
+}
+.pipeline-node { cursor: pointer; }
+.pipeline-node:active { filter: brightness(1.12); }
 
 /* ── Trace Panel ── */
 .trace-panel {
