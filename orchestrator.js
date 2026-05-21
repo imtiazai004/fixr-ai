@@ -77,6 +77,14 @@ Output = the actual reply to the user. That's it. Nothing else.
 3. initiate_call — connect user with provider by phone
 4. schedule_followup — set post-booking reminder
 
+## TOPIC SWITCH (IMPORTANT)
+If the user mentions a clearly different service or need than the one currently
+being discussed (e.g. you were on a car mechanic and they now mention a tutor,
+matric, plumber, etc.), treat it as a BRAND-NEW request: forget the previous
+provider entirely and search for the NEW service. Never keep offering the old
+provider for an unrelated request. Words like "matric", "inter", "FSc", "exam",
+"tuition", "parhai", "subject" mean the user needs a Tutor.
+
 ## WHEN TO ASK A FOLLOW-UP (ask ONE question, then stop)
 - Service type is unclear → ask what type of work
 - Request is 1-2 words with no detail → ask service + area
@@ -183,6 +191,23 @@ const TOOL_DECLARATIONS = [{
 }];
 
 // ─── Tool Executors ─────────────────────────────────────────────────────────────
+// Resolve a provider from the ranked list by id or (fuzzy) name, so a slightly
+// different name from Gemini still picks the right provider/phone.
+function findProvider(ranked, name, id) {
+  if (!ranked || ranked.length === 0) return null;
+  if (id) {
+    const byId = ranked.find(p => p.id === id);
+    if (byId) return byId;
+  }
+  if (name) {
+    const n = String(name).toLowerCase().trim();
+    return ranked.find(p => p.name && p.name.toLowerCase() === n)
+        || ranked.find(p => p.name && (p.name.toLowerCase().includes(n) || n.includes(p.name.toLowerCase())))
+        || null;
+  }
+  return null;
+}
+
 async function execSearchProviders({ service, location, urgency }, session, userLocation) {
   const intent = {
     service:    service   || 'General',
@@ -231,7 +256,7 @@ async function execSearchProviders({ service, location, urgency }, session, user
 
 async function execBookProvider({ provider_name, provider_id, time_preference, service }, session) {
   const ranked   = session.context.providers || [];
-  let provider   = ranked.find(p => p.id === provider_id || p.name === provider_name);
+  let provider   = findProvider(ranked, provider_name, provider_id);
   if (!provider && ranked.length > 0) provider = ranked[0];
   if (!provider) provider = { name: provider_name, id: 'fallback', rating: 4.5, distance: 5 };
 
@@ -270,20 +295,21 @@ async function execBookProvider({ provider_name, provider_id, time_preference, s
 
 async function execInitiateCall({ provider_name, phone, service }, session) {
   const ranked        = session.context.providers || [];
-  const provider      = ranked.find(p => p.name === provider_name) || ranked[0];
+  const provider      = findProvider(ranked, provider_name) || ranked[0] || null;
+  const resolvedName  = provider?.name || provider_name || 'the provider';
   const resolvedPhone = phone || provider?.phone || null;
 
   session.context.lastAction = 'CALL';
 
   return {
     success:  true,
-    provider: provider_name,
+    provider: resolvedName,
     phone:    resolvedPhone,
     action:   'INITIATE_CALL',
     hasPhone: !!resolvedPhone,
     message:  resolvedPhone
-      ? `Calling ${provider_name} at ${resolvedPhone}`
-      : `No phone number on record for ${provider_name}`,
+      ? `Calling ${resolvedName} at ${resolvedPhone}`
+      : `No phone number on record for ${resolvedName}`,
   };
 }
 

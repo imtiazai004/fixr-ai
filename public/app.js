@@ -1531,18 +1531,20 @@ async function processUserInput(text) {
 
         // ── Handle CALL action ──────────────────────────────
         if (action === 'CALL' || data.callResult?.action === 'INITIATE_CALL') {
-            const callRes = data.callResult;
-            const allProviders = (data.rankedProviders && data.rankedProviders.length > 0)
-                ? data.rankedProviders
-                : (data.state?.recommendedProvider ? [data.state.recommendedProvider] : []);
-            const provider = allProviders[0] || { name: callRes?.provider || 'Provider', phone: callRes?.phone };
-            const provPhone = provider.phone || callRes?.phone || null;
+            const callRes = data.callResult || {};
+            // Build the call card from the provider that is ACTUALLY being called
+            // (callResult) — never blindly from the top-ranked provider.
+            const calledProvider = {
+                name:  callRes.provider || 'Provider',
+                phone: callRes.phone || null,
+            };
+            const provPhone = calledProvider.phone;
             appendMessage(data.reply, 'bot-message');
             // Bug 4: always hide the searching spinner after a CALL response
             if (searchingState) searchingState.style.display = 'none';
             if (provPhone) {
-                appendCallCard({ ...provider, phone: provPhone }, chatContainer);
-                if (providerList) providerList.innerHTML = buildCallCard({ ...provider, phone: provPhone }, provPhone.replace(/[^0-9+]/g, ''));
+                appendCallCard(calledProvider, chatContainer);
+                if (providerList) providerList.innerHTML = buildCallCard(calledProvider, provPhone.replace(/[^0-9+]/g, ''));
             } else {
                 // No phone — nothing useful to show in home panel
                 if (homeResults) homeResults.style.display = 'none';
