@@ -1,0 +1,45 @@
+{
+  "name": "Fixr — AI Service Orchestrator",
+  "short_name": "Fixr AI",
+  "description": "Book plumbers, electricians, AC technicians & more instantly with AI voice assistance in English, Roman Urdu & Urdu. Powered by Gemini AI.",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "portrait-primary",
+  "background_color": "#eef2ff",
+  "theme_color": "#6366f1",
+  "lang": "en-US",
+  "dir": "ltr",
+  "icons": [
+    {
+      "src": "/icons/fixr-icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    },
+    {
+      "src": "/icons/fixr-icon-maskable.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "maskable"
+    }
+  ],
+  "categories": ["lifestyle", "utilities", "productivity"],
+  "prefer_related_applications": false,
+  "shortcuts": [
+    {
+      "name": "Book Plumber",
+      "short_name": "Plumber",
+      "description": "Book a plumber instantly",
+      "url": "/?service=Plumber",
+      "icons": [{ "src": "/icons/fixr-icon.svg", "sizes": "any" }]
+    },
+    {
+      "name": "Book Electrician",
+      "short_name": "Electrician",
+      "description": "Book an electrician instantly",
+      "url": "/?service=Electrician",
+      "icons": [{ "src": "/icons/fixr-icon.svg", "sizes": "any" }]
+    }
+  ]
+}

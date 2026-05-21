@@ -1,219 +1,245 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0" />
-  <title>KhidmatAI — AI Service Orchestrator</title>
-  <meta name="description" content="KhidmatAI connects you with verified local service providers using agentic AI. Voice-enabled, instant booking, live tracking." />
+    <meta charset="UTF-8">
+    <!-- Mobile-first viewport: no zoom on input focus, fills screen edge-to-edge -->
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <!-- iOS PWA / full-screen mode -->
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="Fixr AI">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="theme-color" content="#6366f1">
+    <title>Fixr — AI Service Orchestrator</title>
 
-  <!-- Fonts -->
-  <link rel="preconnect" href="https://fonts.googleapis.com" />
-  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&family=Work+Sans:wght@300;400;500;600&display=swap" rel="stylesheet" />
+    <!-- ── PWA: manifest + installability ── -->
+    <link rel="manifest" href="/manifest.json">
+    <!-- iOS: icon shown on home screen when user taps Share → Add to Home Screen -->
+    <link rel="apple-touch-icon" href="/icons/fixr-icon.svg">
 
-  <!-- Leaflet Map -->
-  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
-  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-
-  <!-- Icons -->
-  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" />
-
-  <link rel="stylesheet" href="style.css" />
+    <link rel="stylesheet" href="style.css?v=12">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin=""/>
 </head>
 <body>
+    <div class="mobile-container">
 
-  <!-- ═══ SPLASH SCREEN ═══ -->
-  <div id="splash-screen">
-    <div class="splash-logo">
-      <div class="splash-icon">🤖</div>
-      <h1 class="splash-title">KhidmatAI</h1>
-      <p class="splash-sub">Powered by Google Antigravity</p>
-      <div class="splash-loader">
-        <div class="splash-bar"></div>
-      </div>
-    </div>
-  </div>
-
-  <!-- ═══ MAIN APP SHELL ═══ -->
-  <div id="app" class="app-shell hidden">
-
-    <!-- ── Header ── -->
-    <header class="app-header">
-      <div class="header-left">
-        <div class="header-logo">🤖</div>
-        <div>
-          <h1 class="header-title">KhidmatAI</h1>
-          <p class="header-sub">AI Service Orchestrator</p>
-        </div>
-      </div>
-      <div class="header-right">
-        <div class="header-status">
-          <span class="status-dot pulse"></span>
-          <span class="status-text">5 Agents Active</span>
-        </div>
-        <div class="antigravity-badge">
-          <i class="fa-solid fa-atom"></i> Antigravity
-        </div>
-      </div>
-    </header>
-
-    <!-- ── Tab Content Area ── -->
-    <main class="tab-content">
-
-      <!-- ── TAB 1: CHAT ── -->
-      <section id="tab-chat" class="tab-panel active" role="tabpanel">
-        <div class="chat-messages" id="chat-messages">
-          <!-- Welcome message injected by JS -->
-        </div>
-
-        <!-- Booking card injected here -->
-        <div id="booking-card-container"></div>
-
-        <!-- Input Bar -->
-        <div class="chat-input-bar">
-          <button id="mic-btn" class="icon-btn mic-btn" title="Voice Input" aria-label="Voice Input">
-            <i class="fa-solid fa-microphone"></i>
-          </button>
-          <textarea
-            id="chat-input"
-            class="chat-input"
-            placeholder='Try: "Mujhe G-13 mein AC technician chahiye"'
-            rows="1"
-            aria-label="Chat input"
-          ></textarea>
-          <button id="send-btn" class="send-btn" aria-label="Send message">
-            <i class="fa-solid fa-paper-plane"></i>
-          </button>
-        </div>
-        <p class="input-hint">Supports English, Roman Urdu, اردو • Voice enabled</p>
-      </section>
-
-      <!-- ── TAB 2: MAP ── -->
-      <section id="tab-map" class="tab-panel" role="tabpanel">
-        <div class="map-header">
-          <h2 class="map-title">Live Provider Map</h2>
-          <p class="map-subtitle" id="map-subtitle">G-13, Islamabad • <span id="provider-count">15</span> providers</p>
-        </div>
-        <div id="leaflet-map"></div>
-
-        <!-- Tracking bar -->
-        <div id="tracking-bar" class="tracking-bar hidden">
-          <div class="tracking-info">
-            <span class="tracking-label" id="tracking-label">🚗 Provider En Route</span>
-            <span class="tracking-eta" id="tracking-eta">--</span>
-          </div>
-          <div class="tracking-progress-wrap">
-            <div class="tracking-progress-bg">
-              <div class="tracking-progress-fill" id="tracking-progress"></div>
+        <!-- ══ HEADER ══ -->
+        <header>
+            <div class="logo">
+                <span class="logo-icon">⚡</span>
+                <span class="logo-text">Fixr</span>
             </div>
-          </div>
-          <p class="tracking-distance" id="tracking-distance">Calculating...</p>
+            <div class="header-status" id="app-status">AI Ready</div>
+            <button id="stop-btn" class="stop-btn" title="Stop all Fixr activity">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><rect x="3" y="3" width="18" height="18" rx="3"/></svg>
+            </button>
+        </header>
+
+        <!-- ══ HOME TAB ══ -->
+        <main id="home-container" class="tab-content active">
+
+            <!-- Hero Greeting -->
+            <div class="home-hero">
+                <h2 class="hero-title">Kya chahiye aaj? 🇵🇰</h2>
+                <p class="hero-sub">Speak or type · English / Roman Urdu / اردو</p>
+            </div>
+
+            <!-- Voice Activation Card -->
+            <div class="voice-card" id="voice-search-card">
+                <div class="voice-orb" id="voice-orb">
+                    <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" y1="19" x2="12" y2="23"/><line x1="8" y1="23" x2="16" y2="23"/></svg>
+                </div>
+                <div class="voice-card-text">
+                    <h4 id="voice-card-title">Tap to Speak</h4>
+                    <p id="voice-card-sub">English · Roman Urdu · اردو</p>
+                </div>
+                <button id="home-lang-toggle" class="lang-pill">اردو</button>
+            </div>
+
+            <!-- Results Container (shows while searching & after) -->
+            <div id="home-results" class="home-results" style="display:none;">
+                <div class="searching-state" id="searching-state">
+                    <div class="radar-ring">
+                        <div class="radar-dot"></div>
+                    </div>
+                    <p id="searching-text">Searching local providers...</p>
+                </div>
+                <div id="matched-providers-list" class="matched-providers-list"></div>
+            </div>
+
+            <!-- Quick Service Grid -->
+            <div class="section-label">Quick Services</div>
+            <div class="services-grid">
+                <div class="service-card" data-service="Plumber">
+                    <span class="svc-icon">🔧</span>
+                    <span class="svc-name">Plumber</span>
+                </div>
+                <div class="service-card" data-service="Electrician">
+                    <span class="svc-icon">⚡</span>
+                    <span class="svc-name">Electrician</span>
+                </div>
+                <div class="service-card" data-service="AC Technician">
+                    <span class="svc-icon">❄️</span>
+                    <span class="svc-name">AC Tech</span>
+                </div>
+                <div class="service-card" data-service="Car Mechanic">
+                    <span class="svc-icon">🚗</span>
+                    <span class="svc-name">Mechanic</span>
+                </div>
+                <div class="service-card" data-service="Carpenter">
+                    <span class="svc-icon">🪚</span>
+                    <span class="svc-name">Carpenter</span>
+                </div>
+                <div class="service-card" data-service="Maid / Cleaner">
+                    <span class="svc-icon">🧹</span>
+                    <span class="svc-name">Cleaner</span>
+                </div>
+                <div class="service-card" data-service="Medical Store">
+                    <span class="svc-icon">💊</span>
+                    <span class="svc-name">Pharmacy</span>
+                </div>
+                <div class="service-card" data-service="Cook / Chef">
+                    <span class="svc-icon">👨‍🍳</span>
+                    <span class="svc-name">Cook</span>
+                </div>
+            </div>
+
+        </main>
+
+        <!-- ══ CHAT TAB ══ -->
+        <!-- Welcome message is injected by app.js on session init — gives a fresh chat each load -->
+        <main id="chat-container" class="tab-content"></main>
+
+        <!-- ══ PIPELINE / DASHBOARD TAB ══ -->
+        <main id="dashboard-container" class="tab-content">
+
+            <div class="pipeline-header-row">
+                <div>
+                    <h3 class="pipeline-title">🧠 AI Agent Pipeline</h3>
+                    <p class="pipeline-subtitle" id="pipeline-status-text">Waiting for a request...</p>
+                </div>
+                <div class="pipeline-stat-chip">
+                    <span class="chip-num" id="stat-bookings">0</span>
+                    <span class="chip-label">Bookings</span>
+                </div>
+            </div>
+
+            <!-- 5-Agent Pipeline Visual -->
+            <div class="pipeline-visual">
+                <div class="pipeline-node idle" id="node-intent">
+                    <div class="node-glow"></div>
+                    <div class="node-icon-wrap">🔍</div>
+                    <div class="node-name">Intent</div>
+                </div>
+                <div class="pipeline-arrow" id="conn-1">›</div>
+                <div class="pipeline-node idle" id="node-discovery">
+                    <div class="node-glow"></div>
+                    <div class="node-icon-wrap">🌐</div>
+                    <div class="node-name">Discovery</div>
+                </div>
+                <div class="pipeline-arrow" id="conn-2">›</div>
+                <div class="pipeline-node idle" id="node-ranking">
+                    <div class="node-glow"></div>
+                    <div class="node-icon-wrap">📊</div>
+                    <div class="node-name">Ranking</div>
+                </div>
+                <div class="pipeline-arrow" id="conn-3">›</div>
+                <div class="pipeline-node idle" id="node-booking">
+                    <div class="node-glow"></div>
+                    <div class="node-icon-wrap">📅</div>
+                    <div class="node-name">Booking</div>
+                </div>
+                <div class="pipeline-arrow" id="conn-4">›</div>
+                <div class="pipeline-node idle" id="node-followup">
+                    <div class="node-glow"></div>
+                    <div class="node-icon-wrap">🔔</div>
+                    <div class="node-name">Follow-up</div>
+                </div>
+            </div>
+
+            <!-- Reasoning Trace Log -->
+            <div class="trace-panel">
+                <div class="trace-panel-header">
+                    <span>📋 Agent Reasoning Log</span>
+                    <span class="trace-timer" id="trace-timer"></span>
+                </div>
+                <div class="trace-content" id="trace-content">
+                    <p class="trace-placeholder">Agent activity will appear here in real-time...</p>
+                </div>
+            </div>
+
+            <!-- Active Booking -->
+            <div class="active-booking-card" id="active-booking-card">
+                <p style="color:var(--text-muted);text-align:center;font-size:0.85rem;padding:10px 0;">
+                    No active booking. Request a service from the Home tab.
+                </p>
+            </div>
+
+            <!-- Live Map -->
+            <div class="section-label" style="margin-top:16px;">📍 Live Provider Map</div>
+            <div id="map" class="map-container"></div>
+
+        </main>
+
+        <!-- ══ SHARED TEXT INPUT (Home + Chat tabs only) ══ -->
+        <div class="input-area" id="chat-input-area">
+            <button id="img-btn" class="input-icon-btn" title="Image">📷</button>
+            <!-- inputmode/autocomplete/autocorrect prevent mobile keyboard from auto-correcting
+                 Roman Urdu / Urdu text. spellcheck=false prevents red underlines. -->
+            <input type="text" id="user-input" placeholder="Type your request..."
+                   inputmode="text" autocomplete="off" autocorrect="off"
+                   autocapitalize="off" spellcheck="false">
+            <button id="lang-btn" class="lang-toggle-btn">EN</button>
+            <button id="mic-btn" class="input-icon-btn mic-btn">🎤</button>
+            <button id="send-btn" class="send-btn-main">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22,2 15,22 11,13 2,9"/></svg>
+            </button>
         </div>
-      </section>
 
-      <!-- ── TAB 3: BOOKINGS ── -->
-      <section id="tab-bookings" class="tab-panel" role="tabpanel">
-        <div class="bookings-header">
-          <h2 class="section-title">My Bookings</h2>
-          <span class="badge-count" id="booking-badge-count">0</span>
-        </div>
-        <div id="bookings-list" class="bookings-list">
-          <div class="empty-state">
-            <div class="empty-icon">📋</div>
-            <p>No bookings yet.</p>
-            <p class="empty-hint">Chat with KhidmatAI to book a service.</p>
-          </div>
-        </div>
-      </section>
+        <!-- ══ BOTTOM NAV ══ -->
+        <nav class="bottom-nav">
+            <button class="nav-btn active" data-target="home-container">
+                <span class="nav-icon">🏠</span>
+                <span class="nav-label">Home</span>
+            </button>
+            <button class="nav-btn" data-target="chat-container">
+                <span class="nav-icon">💬</span>
+                <span class="nav-label">Chat</span>
+            </button>
+            <button class="nav-btn" data-target="dashboard-container">
+                <span class="nav-icon">🧠</span>
+                <span class="nav-label">Pipeline</span>
+            </button>
+        </nav>
 
-      <!-- ── TAB 4: TRACE ── -->
-      <section id="tab-trace" class="tab-panel" role="tabpanel">
-        <div class="trace-header">
-          <div>
-            <h2 class="section-title"><i class="fa-solid fa-atom"></i> Antigravity Trace</h2>
-            <p class="trace-subtitle">Real-time agent reasoning logs</p>
-          </div>
-          <button id="export-trace-btn" class="export-btn" title="Export trace log">
-            <i class="fa-solid fa-download"></i> Export
-          </button>
-        </div>
-
-        <div class="agent-pipeline">
-          <div class="pipeline-step" data-agent="intent">
-            <div class="pipeline-dot pending" id="dot-intent"></div>
-            <span>Intent</span>
-          </div>
-          <div class="pipeline-line" id="line-1"></div>
-          <div class="pipeline-step" data-agent="discovery">
-            <div class="pipeline-dot pending" id="dot-discovery"></div>
-            <span>Discovery</span>
-          </div>
-          <div class="pipeline-line" id="line-2"></div>
-          <div class="pipeline-step" data-agent="ranking">
-            <div class="pipeline-dot pending" id="dot-ranking"></div>
-            <span>Ranking</span>
-          </div>
-          <div class="pipeline-line" id="line-3"></div>
-          <div class="pipeline-step" data-agent="booking">
-            <div class="pipeline-dot pending" id="dot-booking"></div>
-            <span>Booking</span>
-          </div>
-          <div class="pipeline-line" id="line-4"></div>
-          <div class="pipeline-step" data-agent="followup">
-            <div class="pipeline-dot pending" id="dot-followup"></div>
-            <span>Follow-up</span>
-          </div>
+        <!-- ══ DIY VIDEO MODAL ══ -->
+        <div class="modal-overlay" id="diy-modal">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h4>📹 AI Video Consultation</h4>
+                    <button class="close-btn" id="close-modal">✕</button>
+                </div>
+                <div class="video-placeholder">
+                    <div class="live-tag">LIVE</div>
+                    <div class="video-text" id="video-instruction">Connecting to expert...</div>
+                    <img src="https://images.unsplash.com/photo-1581094288338-2314dd9a5a2c?auto=format&fit=crop&w=300&q=80" alt="Video" style="width:100%;height:100%;object-fit:cover;opacity:0.3;position:absolute;top:0;left:0;z-index:1;">
+                </div>
+                <div class="modal-body">
+                    <p id="diy-step-text">Connecting to AI expert for step-by-step guidance...</p>
+                    <div class="step-controls">
+                        <button id="prev-step" class="secondary-btn">Previous</button>
+                        <button id="next-step">Next Step</button>
+                    </div>
+                </div>
+            </div>
         </div>
 
-        <div id="trace-log" class="trace-log">
-          <p class="trace-empty">Send a message to see agent reasoning here.</p>
-        </div>
-      </section>
+    </div><!-- end mobile-container -->
 
-    </main>
-
-    <!-- ── Bottom Navigation ── -->
-    <nav class="bottom-nav" role="navigation" aria-label="Main navigation">
-      <button class="nav-btn active" data-tab="chat" id="nav-chat" aria-label="Chat">
-        <i class="fa-solid fa-comments"></i>
-        <span>Chat</span>
-      </button>
-      <button class="nav-btn" data-tab="map" id="nav-map" aria-label="Map">
-        <i class="fa-solid fa-map-location-dot"></i>
-        <span>Map</span>
-      </button>
-      <button class="nav-btn" data-tab="bookings" id="nav-bookings" aria-label="Bookings">
-        <i class="fa-solid fa-calendar-check"></i>
-        <span>Bookings</span>
-        <span class="nav-badge hidden" id="nav-bookings-badge">0</span>
-      </button>
-      <button class="nav-btn" data-tab="trace" id="nav-trace" aria-label="Trace">
-        <i class="fa-solid fa-atom"></i>
-        <span>Trace</span>
-      </button>
-    </nav>
-
-  </div><!-- /#app -->
-
-  <!-- ─── RATING MODAL ─── -->
-  <div id="rating-modal" class="modal-overlay hidden">
-    <div class="modal-card">
-      <h3 class="modal-title">Rate Your Experience</h3>
-      <p class="modal-sub" id="rating-modal-provider"></p>
-      <div class="star-rating" id="star-rating">
-        <span class="star" data-value="1">⭐</span>
-        <span class="star" data-value="2">⭐</span>
-        <span class="star" data-value="3">⭐</span>
-        <span class="star" data-value="4">⭐</span>
-        <span class="star" data-value="5">⭐</span>
-      </div>
-      <textarea id="rating-comment" class="rating-textarea" placeholder="Tell us more (optional)..." rows="3"></textarea>
-      <div class="modal-actions">
-        <button id="submit-rating-btn" class="btn-primary">Submit Rating</button>
-        <button id="skip-rating-btn" class="btn-ghost">Skip</button>
-      </div>
-    </div>
-  </div>
-
-  <script src="app.js"></script>
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+    <script src="app.js?v=17"></script>
 </body>
 </html>
