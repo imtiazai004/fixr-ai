@@ -1139,6 +1139,41 @@ async function playNarration(stepTexts, stepAudios, lang) {
 // CORE: PROCESS USER INPUT
 // Unified handler for ALL inputs (text, voice, service card)
 // ══════════════════════════════════════════════════════════════
+// ── Rotating "agent at work" status phrases ─────────────────────────────────
+// Replaces a static "Thinking" with phrases that reflect what the pipeline is
+// actually doing — the set is picked from the nature of the user's request.
+const THINKING_FLOWS = {
+    search: [
+        '🧠 Analyzing your request…',
+        '🔍 Looking for the right service…',
+        '🗺️ Searching Google Maps…',
+        '🕸️ Diving deep into the web…',
+        '⭐ Comparing ratings & reviews…',
+        '💰 Calculating fair prices…',
+        '🏆 Selecting the best provider…',
+        '✨ Almost there…',
+    ],
+    booking: [
+        '🧠 Understanding your confirmation…',
+        '📋 Checking provider availability…',
+        '💰 Working out the price…',
+        '🔒 Locking your slot…',
+        '✅ Finalizing the booking…',
+    ],
+    call: [
+        '🧠 Got it…',
+        '📇 Pulling up the provider’s number…',
+        '📞 Connecting your call…',
+    ],
+};
+function pickThinkingFlow(text) {
+    const t = (text || '').toLowerCase();
+    if (/\b(call|phone|milao|milawo|number|dial)\b/.test(t)) return THINKING_FLOWS.call;
+    if (/\b(haan|han|yes|theek|thik|okay|book|confirm|bilkul)\b/.test(t) || t.includes('kar do'))
+        return THINKING_FLOWS.booking;
+    return THINKING_FLOWS.search;
+}
+
 async function processUserInput(text) {
     if (!text || isProcessing) return;
     isProcessing = true;
@@ -1177,7 +1212,18 @@ async function processUserInput(text) {
     if (voiceCardEl) voiceCardEl.classList.remove('card-listening');
     if (voiceOrbEl)  voiceOrbEl.classList.remove('listening');
 
-    const typingDiv = appendMessage('⚙️ Thinking deeply...', 'bot-message');
+    // Rotating "live work" status — phrases mirror what the pipeline is doing
+    // for this kind of request, instead of a static "Thinking deeply".
+    const thinkingFlow = pickThinkingFlow(text);
+    const typingDiv = appendMessage(thinkingFlow[0], 'bot-message');
+    typingDiv.style.fontStyle = 'italic';
+    typingDiv.style.opacity   = '0.9';
+    let thinkingStep = 0;
+    const thinkingTimer = setInterval(() => {
+        thinkingStep = Math.min(thinkingStep + 1, thinkingFlow.length - 1);
+        typingDiv.innerHTML = thinkingFlow[thinkingStep];
+        if (chatContainer) chatContainer.scrollTop = chatContainer.scrollHeight;
+    }, 1400);
     setStatus('🧠 Reasoning...', '#f59e0b');
     stopBtn.classList.add('active');
 
@@ -1198,6 +1244,7 @@ async function processUserInput(text) {
         // Update session ID from server
         if (data.sessionId) sessionId = data.sessionId;
 
+        clearInterval(thinkingTimer);
         typingDiv.remove();
         stopBtn.classList.remove('active');
         setStatus('AI Ready', '#10b981');
@@ -1297,6 +1344,7 @@ async function processUserInput(text) {
         // Stay on whatever tab the user is currently on — no disruptive tab jumping
 
     } catch (err) {
+        clearInterval(thinkingTimer);
         typingDiv.remove();
         stopBtn.classList.remove('active');
         setStatus('Error ⚠️', '#ef4444');
