@@ -1066,11 +1066,16 @@ userInput.addEventListener('keypress', e => {
     }
 });
 
-// Service card clicks
+// Service card clicks — jump straight to the Chat tab so the user sees the
+// conversation immediately (instead of staying stuck on the Home tab).
 document.querySelectorAll('.service-card').forEach(card => {
     card.addEventListener('click', () => {
         const service = card.getAttribute('data-service');
-        if (service) { inputMode = 'text'; processUserInput(`I need a ${service}`); }
+        if (service) {
+            inputMode = 'text';
+            document.querySelector('.nav-btn[data-target="chat-container"]')?.click();
+            processUserInput(`I need a ${service}`);
+        }
     });
 });
 

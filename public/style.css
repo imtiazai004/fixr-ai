@@ -888,6 +888,15 @@ header {
     flex-shrink: 0;
 }
 .input-icon-btn:hover { background: rgba(0,0,0,0.09); }
+/* Mic button stands out as the voice control — distinct from the grey 📷 button */
+.mic-btn {
+    background: linear-gradient(135deg, rgba(99,102,241,0.16), rgba(168,85,247,0.16));
+    border-color: rgba(99,102,241,0.45);
+    color: var(--primary);
+}
+.mic-btn:hover {
+    background: linear-gradient(135deg, rgba(99,102,241,0.30), rgba(168,85,247,0.30));
+}
 .mic-btn.listening {
     background: rgba(239,68,68,0.2);
     border-color: var(--danger);
