@@ -462,7 +462,22 @@ async function orchestrate(userMessage, state = {}, userLocation = null, session
       }
 
       // Extract final natural-language response
-      try { finalText = response.text ? response.text() : ''; } catch(e) { finalText = ''; }
+      // Guard: only call .text() when there are no pending function calls.
+      // Calling .text() on a response that contains function calls causes Gemini
+      // to leak "tool_code print(default_api.search_providers(...))" as plain text.
+      const remainingCalls = getFnCalls(response);
+      if (remainingCalls.length === 0) {
+        try { finalText = response.text ? response.text() : ''; } catch(e) { finalText = ''; }
+      }
+
+      // Always strip leaked tool_code blocks (belt-and-suspenders safety net)
+      // Pattern: "tool_code print(default_api.search_providers(...))"
+      if (finalText) {
+        finalText = finalText
+          .replace(/tool_code\s+print\s*\([\s\S]*?\)\s*/gi, '')
+          .replace(/\btool_code\b[^\n]*/gi, '')
+          .trim();
+      }
 
       // Fallback: if Gemini returned empty text, ask it to summarize (one retry)
       if (!finalText.trim()) {
@@ -471,6 +486,13 @@ async function orchestrate(userMessage, state = {}, userLocation = null, session
             'Please give a short conversational voice response (2-3 sentences) summarizing what you found and what the user should do next.'
           );
           try { finalText = summaryResult.response.text?.() || ''; } catch(e2) { finalText = ''; }
+          // Sanitize the retry response too
+          if (finalText) {
+            finalText = finalText
+              .replace(/tool_code\s+print\s*\([\s\S]*?\)\s*/gi, '')
+              .replace(/\btool_code\b[^\n]*/gi, '')
+              .trim();
+          }
         } catch(e) {}
       }
 
