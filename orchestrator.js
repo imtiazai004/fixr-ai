@@ -54,75 +54,53 @@ function getOrCreateSession(sessionId) {
 }
 
 // ─── System Prompt ──────────────────────────────────────────────────────────────
-const SYSTEM_PROMPT = `You are Fixr AI — Pakistan's most intelligent home-services assistant, serving Islamabad & Rawalpindi.
+const SYSTEM_PROMPT = `You are Fixr AI — Pakistan's smartest home-services assistant for Islamabad & Rawalpindi.
 
-## YOUR IDENTITY
-You are NOT a generic chatbot. You are a thoughtful specialist friend who reasons deeply before acting, remembers the full conversation, and asks smart questions to truly understand the user's problem. You are warm, sharp, and patient.
+## CRITICAL OUTPUT RULE — READ THIS FIRST
+Your response must be ONLY the final conversational reply — nothing else.
+NEVER write your reasoning, analysis, thought process, or internal thinking.
+NEVER explain what you are going to do. Just DO it and reply.
+NEVER start with "The user said..." or "The user's request..." or "I need to..." or "Let me...".
+NEVER include meta-commentary like "Here's the response in Urdu script:".
+Output = the actual reply to the user. That's it. Nothing else.
 
 ## LANGUAGE RULE (ABSOLUTE)
-- User speaks English → respond in English only
-- User speaks Roman Urdu (Urdu words in Latin script) → respond in Roman Urdu only
-- User speaks Urdu script → respond in Urdu script only
-- User mixes languages → match their exact mix
-- NEVER change language unless the user does first
+- User writes English → reply in English only
+- User writes Roman Urdu → reply in Roman Urdu only
+- User writes Urdu script (اردو) → reply in Urdu script only
+- User mixes → match their exact mix
+- NEVER switch language unless the user does first
 
 ## YOUR TOOLS
-You have 4 tools:
-1. search_providers — Search for home-service providers in an area
-2. book_provider — Confirm a booking when user explicitly agrees
-3. initiate_call — Connect user with a provider by phone
-4. schedule_followup — Set a post-booking reminder
+1. search_providers — find home-service providers nearby
+2. book_provider — confirm booking when user says yes/haan/theek hai
+3. initiate_call — connect user with provider by phone
+4. schedule_followup — set post-booking reminder
 
-## DEEP REASONING BEFORE EVERY REPLY
-Think through ALL of these before responding:
-1. What is the user's REAL underlying need? (not just the surface words)
-2. Is the request SPECIFIC enough to search? Check: service type clear? location given or inferable?
-3. What ADDITIONAL information would make a better match? (type of work, urgency, budget, material)
-4. Is there prior conversation context to use? ("unhe" = last provider, "woh" = last service)
-5. What is the user's language?
+## WHEN TO ASK A FOLLOW-UP (ask ONE question, then stop)
+- Service type is unclear → ask what type of work
+- Request is 1-2 words with no detail → ask service + area
+- DO NOT ask if: service + area already given, 2+ turns in, user said "urgent", confirming/booking/calling
 
-## CONVERSATIONAL QUESTIONING — ALWAYS DO THIS FOR VAGUE REQUESTS
-When the user's request is incomplete, ask ONE focused, helpful follow-up question before searching.
+## WHEN TO SEARCH IMMEDIATELY
+- Service type clear + area given → search right away
+- 2nd or 3rd turn with enough info → search now, don't ask again
+- "urgent" / "emergency" → search first
 
-Examples of good follow-up questions:
-- "I need a carpenter" → Ask: "Theek hai! Kya kaam chahiye — furniture repair, door/window fix, ya naya furniture banana? Aur area batayein?"
-- "I need help at home" → Ask: "Zaroor! Kya kaam hai — plumbing, electrician, cleaning, ya kuch aur?"
-- "mujhe koi chahiye" → Ask: "Bilkul! Kya kaam ke liye — bijli, pani, safai, ya koi aur kaam?"
-- "AC problem hai" → Ask: "Theek hai! Kya masla hai — thanda nahi ho raha, pani tapak raha hai, ya koi aur issue? Aur kaunsa area hai?"
-- "I need a plumber" → Ask: "Sure! Is it a leak, blocked drain, tap problem, or something else? And which area are you in?"
+## TOOL TRIGGERS
+- "haan" / "yes" / "theek hai" / "kar do" / "bilkul" / "book" → book_provider NOW
+- "call" / "milawo" / "phone" / "number do" → initiate_call NOW
+- New service request → search_providers NOW
+- No location after 2 turns → use "Islamabad" and search
 
-Ask follow-up questions when:
-- The service TYPE is vague or unclear
-- The SPECIFIC PROBLEM is not described (helps match the right specialist)
-- Location is completely missing AND service type is also vague
-- The request has 3 words or fewer and lacks detail
+## REPLY FORMAT
+- 2-3 sentences maximum. Warm, direct, conversational.
+- After search: name the top pick + rating + ask "book karoon ya call milaoon?"
+- After booking: confirm provider name + ETA only
+- After call: just confirm you are connecting them
+- Never use bullet points or lists in your reply
+- Never say "I am an AI"`;
 
-DO NOT ask follow-up when:
-- User has already given service + area (e.g. "plumber G-13") → search immediately
-- This is the 2nd or 3rd turn and user already answered a question → search now
-- User says "urgent" or "emergency" → search first, ask later
-- User is confirming/booking/calling → execute immediately
-
-## HANDLING CONFIRMATIONS & CALLS
-- "call milawo" / "unhe call karo" / "phone karo" → call initiate_call IMMEDIATELY
-- "book kar do" / "haan" / "confirm" / "yes" / "theek hai" → call book_provider IMMEDIATELY
-- "koi aur dhundo" / "nahi yeh nahi" / "find another" → call search_providers again
-- "ruk ja" / "nahin" / "cancel" → acknowledge and stop
-- Completely new service request → search_providers for the new service
-
-## RESPONSE STYLE
-- Voice-optimized: 2-4 sentences max, conversational, NO bullet points or lists
-- When asking a question: be warm, say one specific question, stop there
-- After finding providers: say the top pick's name + why, then ask "book karoon ya call milaoon?"
-- After booking: confirm name + ETA only
-- Never say "I am an AI" or "As an AI language model"
-- Show you understand their situation — be empathetic before transactional
-
-## TOOL RULES
-- "haan" / "yes" / "theek hai" / "kar do" / "bilkul" → call book_provider IMMEDIATELY
-- "call" / "milawo" / "phone" → call initiate_call IMMEDIATELY
-- If no location given after 2 turns → use "Islamabad" as default and search
-- Never ask more than ONE question per turn`;
 
 // ─── Tool Declarations ──────────────────────────────────────────────────────────
 const TOOL_DECLARATIONS = [{
@@ -322,6 +300,68 @@ function detectLanguage(text) {
   return 'ENGLISH';
 }
 
+// ─── Response Sanitizer ────────────────────────────────────────────────────────
+// Strips chain-of-thought reasoning that Gemini 2.5 sometimes leaks into its text.
+// Also removes tool_code artifacts and deduplicates repeated paragraphs.
+function sanitizeGeminiResponse(text) {
+  if (!text) return '';
+
+  // 1. Strip tool_code blocks
+  text = text
+    .replace(/tool_code\s+print\s*\([\s\S]*?\)\s*/gi, '')
+    .replace(/\btool_code\b[^\n]*/gi, '');
+
+  // 2. If the model prefixed "Here's the response in X:" — take what's after it
+  const handoffMatch = text.match(
+    /(?:here(?:'s| is) (?:the |my )?(?:response|reply|answer)[\s\S]*?:|my response:|so my response is:)\s*([\s\S]+)/i
+  );
+  if (handoffMatch) {
+    text = handoffMatch[1];
+  }
+
+  // 3. Strip common reasoning opener lines at the START of the text.
+  //    These are always in English even when the user wrote in Urdu.
+  //    Match multi-line reasoning blocks: stop at first blank line or Urdu text.
+  text = text.replace(
+    /^(The user(?:'s)? [\s\S]*?(?:\n\n|(?=[؀-ۿ])))/,
+    ''
+  );
+  // Also strip single-line reasoning openers
+  const reasoningOpeners = [
+    /^The user(?:'s)? [^.!?]*[.!?]\s*/i,
+    /^I need to [^.!?]*[.!?]\s*/i,
+    /^Let me [^.!?]*[.!?]\s*/i,
+    /^To (?:provide|answer|respond|help) [^.!?]*[.!?]\s*/i,
+    /^Since the (?:previous|last) [^.!?]*[.!?]\s*/i,
+    /^Given (?:that|the) [^.!?]*[.!?]\s*/i,
+    /^Looking at [^.!?]*[.!?]\s*/i,
+    /^Based on [^.!?]*[.!?]\s*/i,
+  ];
+  let changed = true;
+  while (changed) {
+    changed = false;
+    for (const re of reasoningOpeners) {
+      const before = text;
+      text = text.replace(re, '');
+      if (text !== before) { changed = true; break; }
+    }
+  }
+
+  // 4. Deduplicate: if the same sentence appears more than once, keep only first occurrence
+  const sentences = text.split(/(?<=[.!?؟])\s+/);
+  const seen = new Set();
+  const deduped = sentences.filter(s => {
+    const key = s.trim().slice(0, 60).toLowerCase();
+    if (!key || seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  });
+  text = deduped.join(' ');
+
+  // 5. Final trim
+  return text.trim();
+}
+
 // ─── Main Export ─────────────────────────────────────────────────────────────────
 async function orchestrate(userMessage, state = {}, userLocation = null, sessionId = null) {
   const startTime = Date.now();
@@ -365,7 +405,12 @@ async function orchestrate(userMessage, state = {}, userLocation = null, session
         model: 'gemini-2.5-flash-lite',
         tools: TOOL_DECLARATIONS,
         systemInstruction: SYSTEM_PROMPT,
-        generationConfig: { temperature: 0.3, maxOutputTokens: 512 },
+        generationConfig: {
+          temperature: 0.4,
+          maxOutputTokens: 300,   // Force short replies — reasoning gets long, real replies don't
+          // Disable thinking output — prevents chain-of-thought from leaking into response text
+          thinkingConfig: { thinkingBudget: 0 },
+        },
       });
 
       // Start chat with existing session history (multi-turn memory)
@@ -470,29 +515,19 @@ async function orchestrate(userMessage, state = {}, userLocation = null, session
         try { finalText = response.text ? response.text() : ''; } catch(e) { finalText = ''; }
       }
 
-      // Always strip leaked tool_code blocks (belt-and-suspenders safety net)
-      // Pattern: "tool_code print(default_api.search_providers(...))"
+      // ── Sanitize: strip all reasoning / thinking leakage ──────────────────────
       if (finalText) {
-        finalText = finalText
-          .replace(/tool_code\s+print\s*\([\s\S]*?\)\s*/gi, '')
-          .replace(/\btool_code\b[^\n]*/gi, '')
-          .trim();
+        finalText = sanitizeGeminiResponse(finalText);
       }
 
       // Fallback: if Gemini returned empty text, ask it to summarize (one retry)
       if (!finalText.trim()) {
         try {
           const summaryResult = await chat.sendMessage(
-            'Please give a short conversational voice response (2-3 sentences) summarizing what you found and what the user should do next.'
+            'Reply in 2 sentences only. What did you find and what should the user do next?'
           );
           try { finalText = summaryResult.response.text?.() || ''; } catch(e2) { finalText = ''; }
-          // Sanitize the retry response too
-          if (finalText) {
-            finalText = finalText
-              .replace(/tool_code\s+print\s*\([\s\S]*?\)\s*/gi, '')
-              .replace(/\btool_code\b[^\n]*/gi, '')
-              .trim();
-          }
+          if (finalText) finalText = sanitizeGeminiResponse(finalText);
         } catch(e) {}
       }
 
