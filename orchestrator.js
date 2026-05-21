@@ -113,7 +113,7 @@ const TOOL_DECLARATIONS = [{
         properties: {
           service: {
             type: 'string',
-            description: 'Exact service category: Plumber | Electrician | AC Technician | Car Mechanic | Carpenter | Maid / Cleaner | Medical Store | Cook / Chef | Painter | Laundry'
+            description: 'Service category, e.g.: Plumber, Electrician, AC Technician, Car Mechanic, Bike Mechanic, Carpenter, Painter, Mason, Welder, Maid / Cleaner, Cook / Chef, Tailor, Barber, Beautician, Laundry, Gardener, Pest Control, Mobile Repair, Appliance Repair, Generator Repair, Locksmith, Water Tanker, Movers, Tutor, Driver, Catering, Grocery Store, Medical Store. Accept any other local/informal service the user names.'
           },
           location: {
             type: 'string',

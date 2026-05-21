@@ -426,6 +426,7 @@ function stopAllFixr() {
 
     if (recognition) { try { recognition.abort(); } catch(e) {} }
 
+    removeListeningBubble();
     micBtn.classList.remove('listening');
     const voiceOrb = document.getElementById('voice-orb');
     if (voiceOrb) voiceOrb.classList.remove('listening');
@@ -837,6 +838,7 @@ if (SpeechRecognition) {
         // It does NOT fire after every utterance like with continuous:false.
 
         isRecognitionRunning = false;
+        removeListeningBubble(); // mic closed — drop the "Listening…" cue if any
         micBtn.classList.remove('listening');
         const voiceOrb = document.getElementById('voice-orb');
         if (voiceOrb) voiceOrb.classList.remove('listening');
@@ -985,6 +987,10 @@ micBtn?.addEventListener('click', () => {
     const _hr = document.getElementById('home-results');
     if (_hr) _hr.style.display = 'none';
 
+    // Open the Chat tab so the conversation is visible, with a clear listening cue.
+    document.querySelector('.nav-btn[data-target="chat-container"]')?.click();
+    showListeningBubble();
+
     if (!isRecognitionRunning && !isAgentSpeaking) {
         // Edge case: recognition stopped (e.g. after explicit stop or iOS timeout)
         startRecognition(activeSpeechLang);
@@ -1013,6 +1019,11 @@ if (voiceSearchCard) {
         // home screen starts fresh when the user initiates a new voice request.
         const _hr = document.getElementById('home-results');
         if (_hr) _hr.style.display = 'none';
+
+        // Open the Chat tab so the user watches the conversation unfold there
+        // instead of staying on Home where the reply isn't visible.
+        document.querySelector('.nav-btn[data-target="chat-container"]')?.click();
+        showListeningBubble();
 
         // Show active listening UI on the voice card itself
         const voiceCard2     = document.getElementById('voice-search-card');
@@ -1047,6 +1058,25 @@ if (voiceSearchCard) {
             // the UI is already showing active listening state, nothing else needed.
         }
     });
+}
+
+// ── Listening cue bubble — shown in the chat while the mic is open ───────────
+// Gives the user clear feedback that Fixr is listening (instead of tapping the
+// voice card and wondering whether anything will happen).
+function showListeningBubble() {
+    removeListeningBubble();
+    if (!chatContainer) return;
+    const div = document.createElement('div');
+    div.className = 'message bot-message';
+    div.id = 'listening-indicator';
+    div.style.cssText = 'font-style:italic;opacity:0.9;animation:msgFadeIn 0.3s ease-out;';
+    div.innerHTML = '🎙️ <b>Listening…</b> boliye, main sun raha hoon.';
+    chatContainer.appendChild(div);
+    chatContainer.scrollTop = chatContainer.scrollHeight;
+}
+function removeListeningBubble() {
+    const el = document.getElementById('listening-indicator');
+    if (el) el.remove();
 }
 
 // ── Text input ──────────────────────────────────────────────
@@ -1113,6 +1143,7 @@ async function processUserInput(text) {
     if (!text || isProcessing) return;
     isProcessing = true;
     isStopped    = false;
+    removeListeningBubble(); // the user spoke — replace the cue with their message
 
     // NOTE: We do NOT auto-change activeSpeechLang here — user controls mic language via lang toggle.
     // Speech recognition stays in whatever language the user set. Only TTS changes with content.
