@@ -1578,7 +1578,7 @@ async function processUserInput(text) {
         // conversational turns and renders stale cards under a clarifying question.
         } else if (action === 'SEARCH' && data.rankedProviders && data.rankedProviders.length > 0) {
             appendMessage(data.reply, 'bot-message');
-            appendProviderChoices(data.rankedProviders, isUrdu);
+            appendProviderChoices(data.rankedProviders, isUrdu, data.intent && data.intent.service);
             renderHomeProviders(data.rankedProviders, providerList, isUrdu);
             if (searchingState) searchingState.style.display = 'none';
             if (inputMode === 'voice') {
@@ -1771,17 +1771,88 @@ function appendMessage(html, cls) {
     return div;
 }
 
-function appendProviderChoices(providers, isUrdu) {
+// Estimated service rates (PKR) — used by the card "Price" button. Estimates only.
+const PRICE_GUIDE = {
+    'Plumber': 'Rs. 500 – 2,000',
+    'Electrician': 'Rs. 500 – 2,000',
+    'AC Technician': 'Rs. 1,500 – 3,500',
+    'Car Mechanic': 'Rs. 1,000 – 5,000',
+    'Bike Mechanic': 'Rs. 300 – 1,500',
+    'Carpenter': 'Rs. 800 – 3,000',
+    'Painter': 'Rs. 3,000 – 8,000 per room',
+    'Mason': 'Rs. 1,200 – 2,500 per day',
+    'Welder': 'Rs. 800 – 3,000',
+    'Maid / Cleaner': 'Rs. 1,000 – 2,500',
+    'Cook / Chef': 'Rs. 1,000 – 3,000',
+    'Tailor': 'Rs. 400 – 1,500',
+    'Barber': 'Rs. 200 – 800',
+    'Beautician': 'Rs. 1,500 – 6,000',
+    'Laundry': 'Rs. 300 – 1,200',
+    'Gardener': 'Rs. 800 – 2,000',
+    'Pest Control': 'Rs. 2,000 – 6,000',
+    'Mobile Repair': 'Rs. 500 – 4,000',
+    'Appliance Repair': 'Rs. 800 – 3,500',
+    'Generator Repair': 'Rs. 1,000 – 4,000',
+    'Locksmith': 'Rs. 500 – 2,000',
+    'Water Tanker': 'Rs. 2,000 – 5,000',
+    'Movers': 'Rs. 3,000 – 15,000',
+    'Tutor': 'Rs. 3,000 – 12,000 per month',
+    'Driver': 'Rs. 1,000 – 2,500 per day',
+    'Catering': 'Rs. 400 – 1,200 per head',
+};
+
+function appendProviderChoices(providers, isUrdu, service) {
     if (!providers || providers.length === 0) return;
     const wrap = document.createElement('div');
-    wrap.style.cssText = 'display:flex;flex-direction:column;gap:8px;margin-top:4px;';
+    wrap.style.cssText = 'display:flex;flex-direction:column;gap:10px;margin-top:4px;';
+
+    const smallBtn = 'padding:7px 4px;border-radius:9px;border:1px solid var(--card-border,rgba(0,0,0,0.1));background:rgba(0,0,0,0.04);color:var(--text);font-size:0.7rem;font-weight:700;cursor:pointer;';
+    const bookBtn  = 'width:100%;margin-top:8px;padding:9px;border-radius:10px;border:none;background:linear-gradient(135deg,var(--primary),var(--accent));color:#fff;font-weight:800;font-size:0.8rem;cursor:pointer;';
+
     providers.slice(0, 3).forEach((p, i) => {
         const card = document.createElement('div');
-        card.style.cssText = `background:var(--card);border:1px solid ${i === 0 ? 'rgba(245,158,11,0.3)' : 'var(--card-border)'};border-radius:12px;padding:10px 12px;font-size:0.8rem;cursor:pointer;transition:all 0.2s;`;
+        card.style.cssText = `background:var(--card);border:1px solid ${i === 0 ? 'rgba(245,158,11,0.35)' : 'var(--card-border)'};border-radius:14px;padding:12px;font-size:0.8rem;`;
+
+        const phone   = p.phone ? String(p.phone).replace(/[^0-9+]/g, '') : '';
+        let   waPhone = phone.replace(/\D/g, '');
+        if (waPhone.startsWith('0')) waPhone = '92' + waPhone.slice(1);
+        else if (waPhone.length === 10 && waPhone.startsWith('3')) waPhone = '92' + waPhone;
+
         card.innerHTML = `
             <div style="font-weight:700;color:var(--text);">${i === 0 ? '🏆 ' : ''}${p.name}</div>
-            <div style="color:var(--text-dim);margin-top:2px;">⭐ ${p.rating || 4.7} • 📍 ${p.distance ? p.distance + ' km' : 'Nearby'}${p.phone ? ' • 📞 ' + p.phone : ''}</div>`;
-        card.addEventListener('click', () => { inputMode = 'text'; processUserInput(isUrdu ? `Haan ${p.name} ko book kar do` : `Book ${p.name}`); });
+            <div style="color:var(--text-dim);margin-top:3px;">⭐ ${p.rating || 4.7}${p.reviews ? ' (' + p.reviews + ')' : ''} &nbsp;•&nbsp; 📍 ${p.distance != null ? Number(p.distance).toFixed(1) + ' km' : 'Nearby'}</div>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-top:9px;">
+                <button data-act="call"  style="${smallBtn}">📞 Call</button>
+                <button data-act="wa"    style="${smallBtn}">💬 WhatsApp</button>
+                <button data-act="track" style="${smallBtn}">📍 Track</button>
+                <button data-act="price" style="${smallBtn}">💰 Price</button>
+            </div>
+            <button data-act="book" style="${bookBtn}">✅ Book Now</button>`;
+
+        card.querySelector('[data-act="call"]').addEventListener('click', () => {
+            if (phone) window.location.href = 'tel:' + phone;
+            else appendMessage('📞 Is provider ka phone number record par nahi — WhatsApp ya Book try karein.', 'bot-message');
+        });
+        card.querySelector('[data-act="wa"]').addEventListener('click', () => {
+            if (waPhone) window.open('https://wa.me/' + waPhone + '?text=' + encodeURIComponent('Assalam o Alaikum! Fixr app se aap ka number mila hai.'), '_blank');
+            else appendMessage('💬 Is provider ka WhatsApp number record par nahi.', 'bot-message');
+        });
+        card.querySelector('[data-act="track"]').addEventListener('click', () => {
+            const q = (p.lat != null && p.lng != null)
+                ? encodeURIComponent(p.lat + ',' + p.lng)
+                : encodeURIComponent(p.name + ' ' + (p.location || 'Islamabad'));
+            window.open('https://www.google.com/maps/search/?api=1&query=' + q, '_blank');
+        });
+        card.querySelector('[data-act="price"]').addEventListener('click', () => {
+            const svc   = service || 'This service';
+            const range = PRICE_GUIDE[service] || 'Rs. 500 – 3,000 (general estimate)';
+            appendMessage(`💰 <b>${svc} — estimated rate:</b> ${range}<br><small style="opacity:0.75;">Ye andazan rate hai — final qeemat aur kaam ki tafseel provider se tay karein.</small>`, 'bot-message');
+        });
+        card.querySelector('[data-act="book"]').addEventListener('click', () => {
+            inputMode = 'text';
+            processUserInput(isUrdu ? `Haan ${p.name} ko book kar do` : `Book ${p.name}`);
+        });
+
         wrap.appendChild(card);
     });
     chatContainer.appendChild(wrap);
