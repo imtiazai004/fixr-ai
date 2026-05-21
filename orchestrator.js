@@ -15,6 +15,17 @@ const followupAgent  = require('./agents/followupAgent');
 const sessions = new Map();
 const SESSION_TTL_MS = 30 * 60 * 1000; // 30 minutes
 
+// Proactively evict expired sessions every 10 minutes so the Map never grows unbounded
+setInterval(() => {
+  const now = Date.now();
+  for (const [id, session] of sessions.entries()) {
+    if (now - session.lastActivity > SESSION_TTL_MS) {
+      sessions.delete(id);
+      console.log(`[Session] Evicted expired session: ${id}`);
+    }
+  }
+}, 10 * 60 * 1000);
+
 function getOrCreateSession(sessionId) {
   if (sessionId) {
     const existing = sessions.get(sessionId);
@@ -236,7 +247,8 @@ async function execBookProvider({ provider_name, provider_id, time_preference, s
   if (!provider) provider = { name: provider_name, id: 'fallback', rating: 4.5, distance: 5 };
 
   const intent = {
-    service:        service || session.context.lastService || 'Service',
+    service:        service  || session.context.lastService  || 'Service',
+    location:       session.context.lastLocation || 'Islamabad', // Bug 11: was missing
     timePreference: (time_preference || 'ASAP').toUpperCase(),
     urgency:        'ASAP',
     language:       session.context.detectedLang || 'ENGLISH',

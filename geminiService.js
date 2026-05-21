@@ -4,8 +4,7 @@
  * Supports multi-key rotation via GEMINI_API_KEYS in backend/.env
  */
 
-// Reuse the SDK installed in backend/node_modules so we don't double-install
-const { GoogleGenerativeAI } = require('./backend/node_modules/@google/generative-ai');
+const { GoogleGenerativeAI } = require('@google/generative-ai');
 
 class GeminiService {
   constructor() {

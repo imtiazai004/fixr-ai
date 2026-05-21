@@ -237,11 +237,12 @@ function showAudioToast() {
 // By also trying here (on first actual touch), iOS wake-word detection starts correctly.
 document.addEventListener('touchstart', () => {
     attemptUnlockAudio();
-    // Start wake word recognition on first user touch if it hasn't started yet
-    if (SpeechRecognition && !isRecognitionRunning && !isStopped && !voiceEverStarted) {
+    // Bug 6: was guarded by !voiceEverStarted which prevented restart after first use.
+    // Now restarts recognition on any touch if it isn't already running.
+    if (SpeechRecognition && !isRecognitionRunning && !isStopped && !micPermissionDenied && !isAgentSpeaking) {
         setTimeout(() => {
-            if (!isRecognitionRunning && !isStopped) {
-                console.log('[WakeWord] Starting after first touch gesture');
+            if (!isRecognitionRunning && !isStopped && !micPermissionDenied) {
+                console.log('[WakeWord] Restarting after touch gesture');
                 startWakeWordListening();
             }
         }, 400); // Short delay so the gesture is fully registered
@@ -263,8 +264,11 @@ if (navigator.geolocation) {
     navigator.geolocation.getCurrentPosition(
         pos => {
             userLocation = { lat: pos.coords.latitude, lng: pos.coords.longitude };
-            setStatus('📍 GPS Ready', '#10b981');
-            setTimeout(() => setStatus('AI Ready', '#10b981'), 2000);
+            // Bug 8: don't clobber the status bar while an API call is in progress
+            if (!isProcessing) {
+                setStatus('📍 GPS Ready', '#10b981');
+                setTimeout(() => { if (!isProcessing) setStatus('AI Ready', '#10b981'); }, 2000);
+            }
         },
         () => {},
         { enableHighAccuracy: true, timeout: 8000 }
@@ -900,6 +904,18 @@ function syncLanguageUI(lang) {
     if (title) title.textContent = isUrdu ? 'بولیں (Urdu)' : 'Tap to Speak';
     if (sub)   sub.textContent   = isUrdu ? 'اردو · Roman Urdu · English' : 'English · Roman Urdu · اردو';
     if (userInput) userInput.placeholder = isUrdu ? 'اپنی ضرورت لکھیں...' : 'Type your request...';
+
+    // Bug 5: restart recognition with new language when user taps the toggle mid-session
+    if (recognition && isRecognitionRunning && !isAgentSpeaking && !isProcessing) {
+        try { recognition.abort(); } catch(e) {}
+        isRecognitionRunning = false;
+        setTimeout(() => {
+            if (!isRecognitionRunning && !isStopped && !isAgentSpeaking) {
+                wakeWordModeActive = true;
+                startWakeWordListening();
+            }
+        }, 300);
+    }
 }
 syncLanguageUI(activeSpeechLang);
 
@@ -1017,7 +1033,11 @@ async function playNarration(stepTexts, stepAudios, lang) {
     for (let i = 0; i < texts.length; i++) {
         if (isStopped || pendingBargeInText) break;
         const audio = audios[i] || null;
-        await speak(texts[i], audio, lang);
+        // Bug 2: auto-detect script per step so Urdu-script text gets ur-PK and
+        // Latin-script Roman Urdu gets en-US (ElevenLabs reads Latin as English).
+        // The caller's `lang` is used as a fallback for when audio is provided.
+        const textLang = audio ? lang : (/[؀-ۿ]/.test(texts[i]) ? 'ur-PK' : 'en-US');
+        await speak(texts[i], audio, textLang);
         // Short pause between narration steps so they feel distinct
         if (i < texts.length - 1 && !isStopped && !pendingBargeInText) {
             await new Promise(r => setTimeout(r, 250));
@@ -1119,9 +1139,14 @@ async function processUserInput(text) {
             const provider = allProviders[0] || { name: callRes?.provider || 'Provider', phone: callRes?.phone };
             const provPhone = provider.phone || callRes?.phone || null;
             appendMessage(data.reply, 'bot-message');
+            // Bug 4: always hide the searching spinner after a CALL response
+            if (searchingState) searchingState.style.display = 'none';
             if (provPhone) {
                 appendCallCard({ ...provider, phone: provPhone }, chatContainer);
                 if (providerList) providerList.innerHTML = buildCallCard({ ...provider, phone: provPhone }, provPhone.replace(/[^0-9+]/g, ''));
+            } else {
+                // No phone — nothing useful to show in home panel
+                if (homeResults) homeResults.style.display = 'none';
             }
             // Only speak if user is in voice mode (mic input) — text input stays silent
             if (inputMode === 'voice') {
@@ -1139,7 +1164,9 @@ async function processUserInput(text) {
                 appendProviderCard(bookingProvider, data.booking, false);
                 updateDashboard(bookingProvider, data.booking, false);
             }
+            // Bug 4: hide both searching state AND results panel after booking
             if (searchingState) searchingState.style.display = 'none';
+            if (homeResults) homeResults.style.display = 'none';
             if (inputMode === 'voice') {
                 await playNarration(data.stepTexts, data.stepAudios, ttsLang);
                 scheduleAutoListen(isUrdu);
@@ -1160,7 +1187,9 @@ async function processUserInput(text) {
         } else {
             const reply = data.reply || (isUrdu ? 'کوئی provider نہیں ملا۔ دوسری request کریں۔' : 'No providers found. Try again.');
             appendMessage(reply, 'bot-message');
+            // Bug 4: hide the results panel entirely for pure conversational replies
             if (searchingState) searchingState.style.display = 'none';
+            if (homeResults) homeResults.style.display = 'none';
             if (inputMode === 'voice') {
                 await playNarration(data.stepTexts && data.stepTexts.length > 0
                     ? data.stepTexts

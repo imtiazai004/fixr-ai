@@ -179,31 +179,19 @@ app.post('/api/request', async (req, res) => {
     let initAudioBase64 = null;
     let discoveryAudioBase64 = null;
 
-    if (result.voiceResponse) {
-      try {
-        const finalAudioBuffer = await voiceService.generateSpeech(result.voiceResponse);
-        if (finalAudioBuffer) {
-          audioBase64 = finalAudioBuffer.toString('base64');
-        }
-      } catch (err) {
-        console.warn('[Server] ElevenLabs final voice response generation failed:', err.message);
-      }
-    }
-
     if (result.stepTexts && result.stepTexts.length > 0) {
       try {
         const audioBuffers = await Promise.all(
           result.stepTexts.map(text => voiceService.generateSpeech(text))
         );
         stepAudios = audioBuffers.map(buf => buf ? buf.toString('base64') : null);
-        
+
         // Map to legacy parameters for backward compatibility
-        initAudioBase64 = stepAudios[0] || null;
+        initAudioBase64      = stepAudios[0] || null;
         discoveryAudioBase64 = stepAudios[1] || null;
-        if (!audioBase64) {
-          audioBase64 = stepAudios[stepAudios.length - 1] || null;
-        }
-        
+        // Unconditionally use last step as the primary audio (no double TTS call)
+        audioBase64 = stepAudios[stepAudios.length - 1] || null;
+
         console.log(`[Server] Generated ${stepAudios.length} progressive voice buffers successfully.`);
       } catch (voiceErr) {
         console.warn('[Server] ElevenLabs progressive voice generation failed/skipped:', voiceErr.message);
