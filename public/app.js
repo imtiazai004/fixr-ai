@@ -1589,7 +1589,6 @@ async function processUserInput(text) {
 
         // ── Handle BOOKING ──────────────────────────────────
         } else if (action === 'BOOKING' || data.booking) {
-            appendMessage(data.reply, 'bot-message');
             // Resolve the provider that was actually booked (not blindly #1)
             const bookedName = data.booking && data.booking.provider && data.booking.provider.name;
             const rp = data.rankedProviders || [];
@@ -1599,8 +1598,11 @@ async function processUserInput(text) {
                     bookedName.toLowerCase().includes(p.name.toLowerCase()))))
                 || rp[0] || data.state?.recommendedProvider || null;
             if (data.booking) {
-                // Booking card lives in the CHAT only — not the Pipeline tab.
+                // The booking card carries the name, details and actions, so it
+                // REPLACES the verbose text bubble — no separate text message.
                 appendProviderCard(bookingProvider, data.booking, false);
+            } else {
+                appendMessage(data.reply, 'bot-message');
             }
             // Bug 4: hide both searching state AND results panel after booking
             if (searchingState) searchingState.style.display = 'none';
