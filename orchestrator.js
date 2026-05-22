@@ -220,7 +220,7 @@ function findProvider(ranked, name, id) {
 async function execSearchProviders({ service, location, urgency }, session, userLocation) {
   const intent = {
     service:    service   || 'General',
-    location:   location  || 'Islamabad',
+    location:   location  || session.context.userCity || 'Islamabad',
     urgency:    urgency   || 'ASAP',
     language:   session.context.detectedLang || 'ENGLISH',
     confidence: 92,
@@ -426,6 +426,10 @@ async function orchestrate(userMessage, state = {}, userLocation = null, session
   const session    = getOrCreateSession(resolvedId);
   if (userLocation) session.context.userLocation = userLocation;
 
+  // Home-page city selector — used as the default search location
+  const userCity = (state && state.city) ? String(state.city).trim() : null;
+  if (userCity) session.context.userCity = userCity;
+
   // Detect language
   const lang = detectLanguage(userMessage);
   session.context.detectedLang = lang;
@@ -471,7 +475,10 @@ async function orchestrate(userMessage, state = {}, userLocation = null, session
       // Start chat with existing session history (multi-turn memory)
       const chat = model.startChat({ history: session.history });
 
-      let result   = await chat.sendMessage(userMessage);
+      const cityNote = session.context.userCity
+        ? `[Context: the user is in ${session.context.userCity}. Use this city as the location unless they name a different one — do not re-ask for the city.]\n\n`
+        : '';
+      let result   = await chat.sendMessage(cityNote + userMessage);
       let response = result.response;
 
       // Helper: safely get function calls (SDK 0.24 returns undefined when none)
@@ -620,6 +627,28 @@ async function orchestrate(userMessage, state = {}, userLocation = null, session
   // (those turns don't run search, so rankedProviders stays empty without this)
   if (rankedProviders.length === 0 && session.context.providers && session.context.providers.length > 0) {
     rankedProviders = session.context.providers;
+  }
+
+  // ── Booking safety net ──────────────────────────────────────────────────────
+  // If the user clearly asked to book but Gemini didn't actually call
+  // book_provider, complete the booking ourselves — the chat MUST get a card.
+  if (!bookingData && /\bbook\b/i.test(userMessage) &&
+      session.context.providers && session.context.providers.length > 0) {
+    try {
+      const ranked = session.context.providers;
+      const lowMsg = userMessage.toLowerCase();
+      const picked = ranked.find(p => p.name && lowMsg.includes(p.name.toLowerCase().slice(0, 14)))
+                  || ranked[0];
+      const sn = await execBookProvider(
+        { provider_name: picked.name, service: session.context.lastService }, session);
+      if (sn && sn.success) {
+        bookingData    = sn;
+        detectedAction = 'BOOKING';
+        console.log('[Orchestrator] Booking safety-net completed for', picked.name);
+      }
+    } catch (e) {
+      console.warn('[Orchestrator] Booking safety-net failed:', e.message);
+    }
   }
 
   trace.push({

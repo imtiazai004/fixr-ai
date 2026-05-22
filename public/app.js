@@ -425,6 +425,75 @@ function showHistoryPanel() {
 
 document.getElementById('history-btn')?.addEventListener('click', showHistoryPanel);
 
+// ══════════════════════════════════════════════════════════════
+// CITY SELECTOR + WELCOME / ABOUT FIXR
+// ══════════════════════════════════════════════════════════════
+let selectedCity = 'Islamabad';
+try { selectedCity = localStorage.getItem('fixr_city') || 'Islamabad'; } catch (e) {}
+const citySelect = document.getElementById('city-select');
+if (citySelect) {
+    citySelect.value = selectedCity;
+    citySelect.addEventListener('change', () => {
+        selectedCity = citySelect.value;
+        try { localStorage.setItem('fixr_city', selectedCity); } catch (e) {}
+        setStatus('📍 City: ' + selectedCity, '#10b981');
+        setTimeout(() => setStatus('AI Ready', '#10b981'), 2000);
+    });
+}
+
+function showAboutFixr() {
+    const old = document.getElementById('about-fixr-pop');
+    if (old) old.remove();
+    const pop = document.createElement('div');
+    pop.id = 'about-fixr-pop';
+    pop.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:9999;display:flex;align-items:center;justify-content:center;padding:22px;';
+    pop.innerHTML = `
+        <div style="background:var(--card,#fff);border-radius:20px;padding:22px;max-width:340px;max-height:82vh;overflow-y:auto;box-shadow:0 16px 48px rgba(0,0,0,0.35);">
+            <div style="text-align:center;font-size:2rem;">⚡</div>
+            <div style="text-align:center;font-weight:800;font-size:1.15rem;color:var(--text);margin-top:2px;">About Fixr</div>
+            <div style="color:var(--text-dim);font-size:0.85rem;line-height:1.6;margin-top:12px;">
+                <p><b>Fixr</b> Pakistan ka AI-powered local services assistant hai — plumber, electrician, AC technician, tutor, mechanic aur 28+ services, poore Pakistan mein.</p>
+                <p style="margin-top:10px;"><b>🧠 Kaise kaam karta hai:</b> 5 AI agents (Intent → Discovery → Ranking → Booking → Follow-up) aap ki baat samajh kar Google Maps se asal providers dhoondte, rate karte aur behtareen chunte hain.</p>
+                <p style="margin-top:10px;"><b>✨ Features:</b> Voice (English / Roman Urdu / اردو), photo se masla detect, call · WhatsApp · track · book — sab ek jagah.</p>
+                <p style="margin-top:10px;"><b>📍 Coverage:</b> Poora Pakistan — har city.</p>
+            </div>
+            <button id="about-close" style="width:100%;margin-top:16px;padding:11px;border:none;border-radius:12px;background:linear-gradient(135deg,var(--primary),var(--accent));color:#fff;font-weight:800;cursor:pointer;">Samajh gaya</button>
+        </div>`;
+    document.body.appendChild(pop);
+    const close = () => pop.remove();
+    pop.addEventListener('click', e => { if (e.target === pop) close(); });
+    pop.querySelector('#about-close').addEventListener('click', close);
+}
+
+function showWelcomePopup() {
+    const pop = document.createElement('div');
+    pop.id = 'welcome-pop';
+    pop.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.55);z-index:9999;display:flex;align-items:center;justify-content:center;padding:22px;';
+    pop.innerHTML = `
+        <div style="background:var(--card,#fff);border-radius:22px;padding:24px;max-width:330px;text-align:center;box-shadow:0 16px 48px rgba(0,0,0,0.4);">
+            <div style="font-size:2.6rem;">👋</div>
+            <div style="font-weight:800;font-size:1.2rem;color:var(--text);margin-top:4px;">Assalam o Alaikum!</div>
+            <div style="color:var(--text-dim);font-size:0.88rem;line-height:1.6;margin-top:10px;">
+                <b>Fixr</b> mein khushaamdeed — Pakistan ka AI services assistant. Plumber, electrician, tutor — koi bhi service, bol kar ya likh kar, poore Pakistan mein dhoondein.
+            </div>
+            <button id="welcome-about" style="width:100%;margin-top:16px;padding:11px;border:1px solid var(--card-border,rgba(0,0,0,0.12));border-radius:12px;background:rgba(99,102,241,0.08);color:var(--primary);font-weight:800;cursor:pointer;">Fixr ke baare mein</button>
+            <button id="welcome-start" style="width:100%;margin-top:9px;padding:11px;border:none;border-radius:12px;background:linear-gradient(135deg,var(--primary),var(--accent));color:#fff;font-weight:800;cursor:pointer;">Shuru karein</button>
+        </div>`;
+    document.body.appendChild(pop);
+    pop.querySelector('#welcome-start').addEventListener('click', () => pop.remove());
+    pop.querySelector('#welcome-about').addEventListener('click', () => { pop.remove(); showAboutFixr(); });
+}
+
+document.getElementById('logo-btn')?.addEventListener('click', showAboutFixr);
+
+// First-ever visit → greet the new user
+try {
+    if (!localStorage.getItem('fixr_visited')) {
+        localStorage.setItem('fixr_visited', '1');
+        setTimeout(showWelcomePopup, 800);
+    }
+} catch (e) {}
+
 // ── Wake Word Background Listener ──────────────────────────────────────────
 // Silently starts recognition to listen for wake words:
 //   "Fixr", "Fixer", "Hey Fixr", "Hey Fixer", "Hello Fixr", "Hello Fixer"
@@ -1526,7 +1595,7 @@ async function processUserInput(text) {
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
                 userInput:  text,
-                state:      { sessionId },
+                state:      { sessionId, city: selectedCity },
                 userLocation,
                 sessionId
             })
