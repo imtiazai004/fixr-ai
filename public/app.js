@@ -298,7 +298,7 @@ function showChatWelcome() {
             🏠 <b>Home tab</b> par service request karein, ya neeche type karein.<br>
             🎤 <b>Mic button</b> tap kar ke baat karein, ya <b>"Hey Fixr"</b> bol ke wake karein.<br>
             🧠 <b>Pipeline tab</b> mein AI agents live kaam karte dikhayi dete hain.<br><br>
-            📍 Coverage: Islamabad, Rawalpindi &amp; surrounding areas.
+            📍 Coverage: All across Pakistan — har city &amp; ilaqa.
         </div>`;
     chatContainer.appendChild(wrap);
 }
@@ -1881,7 +1881,7 @@ function appendProviderChoices(providers, isUrdu, service) {
         card.querySelector('[data-act="track"]').addEventListener('click', () => {
             const q = (p.lat != null && p.lng != null)
                 ? encodeURIComponent(p.lat + ',' + p.lng)
-                : encodeURIComponent(p.name + ' ' + (p.location || 'Islamabad'));
+                : encodeURIComponent(p.name + ' ' + (p.location || ''));
             window.open('https://www.google.com/maps/search/?api=1&query=' + q, '_blank');
         });
         card.querySelector('[data-act="price"]').addEventListener('click', () => {
@@ -1942,7 +1942,7 @@ function appendProviderCard(provider, booking, autoBook) {
     card.querySelector('[data-act="track"]').addEventListener('click', () => {
         const q = (provider && provider.lat != null && provider.lng != null)
             ? encodeURIComponent(provider.lat + ',' + provider.lng)
-            : encodeURIComponent(name + ' ' + ((provider && provider.location) || 'Islamabad'));
+            : encodeURIComponent(name + ' ' + ((provider && provider.location) || ''));
         window.open('https://www.google.com/maps/search/?api=1&query=' + q, '_blank');
     });
     card.querySelector('[data-act="cancel"]').addEventListener('click', () => {

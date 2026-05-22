@@ -309,7 +309,7 @@ async function analyzeServiceImage(imageBase64, mimeType) {
     .split(',').map(k => k.trim()).filter(Boolean);
   if (!keys.length) throw new Error('No Gemini API keys configured');
 
-  const prompt = `You are Fixr, a home-services assistant for Islamabad & Rawalpindi, Pakistan.
+  const prompt = `You are Fixr, a home-services assistant for all of Pakistan.
 Look at this photo of a household or vehicle problem and decide which ONE local service is needed.
 Respond ONLY as JSON: {"service":"<one of: Plumber, Electrician, AC Technician, Carpenter, Painter, Car Mechanic, Bike Mechanic, Appliance Repair, Pest Control, Mason, Welder, Cleaner, Generator Repair, Mobile Repair>","problem":"<one short sentence in Roman Urdu describing what you see>"}`;
 
