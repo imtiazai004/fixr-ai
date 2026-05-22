@@ -1599,8 +1599,8 @@ async function processUserInput(text) {
                     bookedName.toLowerCase().includes(p.name.toLowerCase()))))
                 || rp[0] || data.state?.recommendedProvider || null;
             if (data.booking) {
+                // Booking card lives in the CHAT only — not the Pipeline tab.
                 appendProviderCard(bookingProvider, data.booking, false);
-                updateDashboard(bookingProvider, data.booking, false);
             }
             // Bug 4: hide both searching state AND results panel after booking
             if (searchingState) searchingState.style.display = 'none';
