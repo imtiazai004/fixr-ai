@@ -1971,12 +1971,40 @@ function appendProviderChoices(providers, isUrdu, service) {
 
 function appendProviderCard(provider, booking, autoBook) {
     if (!provider && !booking) return;
-    const name    = provider?.name || booking?.provider?.name || 'Provider';
-    const eta     = booking?.etaMinutes || 25;
-    const cost    = booking?.cost?.total || '?';
-    const bookId  = booking?.confirmationId || booking?.bookingId || 'BK-' + Date.now().toString(36).toUpperCase();
+    const name   = provider?.name || booking?.provider?.name || 'Provider';
+    const bookId = booking?.confirmationId || booking?.bookingId || 'BK-' + Date.now().toString(36).toUpperCase();
     bookingCount++;
     if (statBookings) statBookings.textContent = bookingCount;
+
+    // Compact record card in the chat — tap to re-open the full booking modal.
+    const card = document.createElement('div');
+    card.className = 'provider-card';
+    card.style.cssText = 'background:rgba(16,185,129,0.08);border:1px solid rgba(16,185,129,0.45);border-radius:14px;padding:12px 14px;margin-top:6px;cursor:pointer;display:flex;align-items:center;gap:11px;';
+    card.innerHTML = `
+        <span style="font-size:1.6rem;flex-shrink:0;">✅</span>
+        <div style="flex:1;min-width:0;">
+            <div style="font-weight:800;color:#10b981;font-size:0.88rem;">Booking Confirmed</div>
+            <div style="font-weight:700;color:var(--text);font-size:0.86rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${name}</div>
+            <div style="color:var(--text-dim);font-size:0.72rem;">🎫 ${bookId} &nbsp;·&nbsp; tap to manage</div>
+        </div>
+        <span style="color:var(--text-dim);font-size:1.3rem;flex-shrink:0;">›</span>`;
+    card.addEventListener('click', () => showBookingModal(provider, booking));
+    chatContainer.appendChild(card);
+    requestAnimationFrame(() => { chatContainer.scrollTop = chatContainer.scrollHeight; });
+
+    // Show the prominent confirmation modal immediately.
+    showBookingModal(provider, booking);
+}
+
+// Prominent, always-fully-visible booking modal (centered overlay — never cut off)
+function showBookingModal(provider, booking) {
+    const old = document.getElementById('booking-modal');
+    if (old) old.remove();
+
+    const name   = provider?.name || booking?.provider?.name || 'Provider';
+    const eta    = booking?.etaMinutes || 25;
+    const cost   = booking?.cost?.total || '?';
+    const bookId = booking?.confirmationId || booking?.bookingId || 'BK-XXXX';
 
     const rawPhone = provider?.phone || booking?.provider?.phone || '';
     const phone    = rawPhone ? String(rawPhone).replace(/[^0-9+]/g, '') : '';
@@ -1984,49 +2012,53 @@ function appendProviderCard(provider, booking, autoBook) {
     if (waPhone.startsWith('0')) waPhone = '92' + waPhone.slice(1);
     else if (waPhone.length === 10 && waPhone.startsWith('3')) waPhone = '92' + waPhone;
 
-    const sBtn = 'padding:8px 4px;border-radius:9px;border:1px solid var(--card-border,rgba(0,0,0,0.1));background:rgba(0,0,0,0.04);color:var(--text);font-size:0.72rem;font-weight:700;cursor:pointer;';
+    const sBtn = 'padding:11px 4px;border-radius:11px;border:1px solid var(--card-border,rgba(0,0,0,0.1));background:rgba(0,0,0,0.04);color:var(--text);font-size:0.75rem;font-weight:700;cursor:pointer;';
 
-    const card = document.createElement('div');
-    card.className = 'provider-card';
-    card.style.cssText = 'background:var(--card);border:1px solid rgba(16,185,129,0.4);border-radius:16px;padding:14px;margin-top:6px;';
-    card.innerHTML = `
-        <div style="font-weight:800;font-size:0.95rem;color:#10b981;">✅ Booking Confirmed</div>
-        <div style="font-weight:700;font-size:0.95rem;color:var(--text);margin-top:5px;">${name}</div>
-        <div style="color:var(--text-dim);font-size:0.78rem;margin-top:5px;">🚗 ETA ${eta} min &nbsp;•&nbsp; 💰 PKR ${cost} &nbsp;•&nbsp; 🎫 ${bookId}</div>
-        <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px;margin-top:11px;">
-            <button data-act="call"  style="${sBtn}">📞 Call</button>
-            <button data-act="wa"    style="${sBtn}">💬 WhatsApp</button>
-            <button data-act="track" style="${sBtn}">📍 Track</button>
-        </div>
-        <button data-act="cancel" style="width:100%;margin-top:8px;padding:9px;border-radius:10px;border:1px solid rgba(239,68,68,0.4);background:rgba(239,68,68,0.08);color:#ef4444;font-weight:800;font-size:0.78rem;cursor:pointer;">🗑️ Cancel Booking</button>`;
+    const modal = document.createElement('div');
+    modal.id = 'booking-modal';
+    modal.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.55);z-index:9999;display:flex;align-items:center;justify-content:center;padding:22px;';
+    modal.innerHTML = `
+        <div style="background:var(--card,#fff);border-radius:22px;padding:22px;max-width:340px;width:100%;box-shadow:0 18px 52px rgba(0,0,0,0.42);">
+            <div style="text-align:center;font-size:2.8rem;line-height:1;">✅</div>
+            <div style="text-align:center;font-weight:800;font-size:1.15rem;color:#10b981;margin-top:4px;">Booking Confirmed</div>
+            <div style="text-align:center;font-weight:700;font-size:1rem;color:var(--text);margin-top:9px;">${name}</div>
+            <div style="text-align:center;color:var(--text-dim);font-size:0.82rem;margin-top:7px;line-height:1.7;">
+                🚗 ETA ${eta} min &nbsp;·&nbsp; 💰 PKR ${cost}<br>🎫 ${bookId}
+            </div>
+            <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:7px;margin-top:17px;">
+                <button id="bm-call"  style="${sBtn}">📞 Call</button>
+                <button id="bm-wa"    style="${sBtn}">💬 WhatsApp</button>
+                <button id="bm-track" style="${sBtn}">📍 Track</button>
+            </div>
+            <button id="bm-cancel" style="width:100%;margin-top:9px;padding:12px;border:1px solid rgba(239,68,68,0.45);border-radius:12px;background:rgba(239,68,68,0.08);color:#ef4444;font-weight:800;font-size:0.84rem;cursor:pointer;">🗑️ Cancel Booking</button>
+            <button id="bm-done" style="width:100%;margin-top:9px;padding:12px;border:none;border-radius:12px;background:linear-gradient(135deg,var(--primary),var(--accent));color:#fff;font-weight:800;font-size:0.86rem;cursor:pointer;">Done</button>
+        </div>`;
+    document.body.appendChild(modal);
 
-    card.querySelector('[data-act="call"]').addEventListener('click', () => {
+    const close = () => modal.remove();
+    modal.addEventListener('click', e => { if (e.target === modal) close(); });
+    modal.querySelector('#bm-done').addEventListener('click', close);
+    modal.querySelector('#bm-call').addEventListener('click', () => {
         if (phone) window.location.href = 'tel:' + phone;
         else appendMessage('📞 Is provider ka phone number record par nahi.', 'bot-message');
     });
-    card.querySelector('[data-act="wa"]').addEventListener('click', () => {
+    modal.querySelector('#bm-wa').addEventListener('click', () => {
         if (waPhone) window.open('https://wa.me/' + waPhone + '?text=' + encodeURIComponent('Assalam o Alaikum! Fixr app se booking ki hai.'), '_blank');
         else appendMessage('💬 Is provider ka WhatsApp number record par nahi.', 'bot-message');
     });
-    card.querySelector('[data-act="track"]').addEventListener('click', () => {
+    modal.querySelector('#bm-track').addEventListener('click', () => {
         const q = (provider && provider.lat != null && provider.lng != null)
             ? encodeURIComponent(provider.lat + ',' + provider.lng)
             : encodeURIComponent(name + ' ' + ((provider && provider.location) || ''));
         window.open('https://www.google.com/maps/search/?api=1&query=' + q, '_blank');
     });
-    card.querySelector('[data-act="cancel"]').addEventListener('click', () => {
+    modal.querySelector('#bm-cancel').addEventListener('click', () => {
         if (!confirm('Booking cancel karna chahte hain?')) return;
-        card.style.opacity = '0.55';
-        card.style.borderColor = 'rgba(239,68,68,0.4)';
-        card.querySelectorAll('button').forEach(b => { b.disabled = true; b.style.cursor = 'default'; });
+        close();
         appendMessage('🗑️ Aap ki booking <b>cancel</b> kar di gayi hai. Koi aur service chahiye to batayein.', 'bot-message');
         bookingCount = Math.max(0, bookingCount - 1);
         if (statBookings) statBookings.textContent = bookingCount;
-        if (activeBookingCard) activeBookingCard.innerHTML = '<p style="color:var(--text-muted);text-align:center;font-size:0.85rem;padding:10px 0;">No active booking.</p>';
     });
-
-    chatContainer.appendChild(card);
-    chatContainer.scrollTop = chatContainer.scrollHeight;
 }
 
 function appendCallCard(provider, container) {
