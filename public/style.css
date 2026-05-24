@@ -204,7 +204,7 @@ header {
     display: none;
     flex-direction: column;
     gap: 14px;
-    padding: 18px 16px 24px; /* extra bottom padding so last card isn't flush */
+    padding: 18px 16px 56px; /* generous bottom padding so the last card always has breathing room above the input bar */
     /* Smooth momentum scroll on iOS + Android */
     -webkit-overflow-scrolling: touch;
     overscroll-behavior: contain; /* prevent scroll chaining to parent */

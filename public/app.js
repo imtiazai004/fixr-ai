@@ -1972,27 +1972,79 @@ function appendProviderChoices(providers, isUrdu, service) {
 function appendProviderCard(provider, booking, autoBook) {
     if (!provider && !booking) return;
     const name   = provider?.name || booking?.provider?.name || 'Provider';
+    const eta    = booking?.etaMinutes || 25;
+    const cost   = booking?.cost?.total || '?';
     const bookId = booking?.confirmationId || booking?.bookingId || 'BK-' + Date.now().toString(36).toUpperCase();
     bookingCount++;
     if (statBookings) statBookings.textContent = bookingCount;
 
-    // Compact record card in the chat — tap to re-open the full booking modal.
-    const card = document.createElement('div');
-    card.className = 'provider-card';
-    card.style.cssText = 'background:rgba(16,185,129,0.08);border:1px solid rgba(16,185,129,0.45);border-radius:14px;padding:12px 14px;margin-top:6px;cursor:pointer;display:flex;align-items:center;gap:11px;';
-    card.innerHTML = `
-        <span style="font-size:1.6rem;flex-shrink:0;">✅</span>
-        <div style="flex:1;min-width:0;">
-            <div style="font-weight:800;color:#10b981;font-size:0.88rem;">Booking Confirmed</div>
-            <div style="font-weight:700;color:var(--text);font-size:0.86rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${name}</div>
-            <div style="color:var(--text-dim);font-size:0.72rem;">🎫 ${bookId} &nbsp;·&nbsp; tap to manage</div>
-        </div>
-        <span style="color:var(--text-dim);font-size:1.3rem;flex-shrink:0;">›</span>`;
-    card.addEventListener('click', () => showBookingModal(provider, booking));
-    chatContainer.appendChild(card);
-    requestAnimationFrame(() => { chatContainer.scrollTop = chatContainer.scrollHeight; });
+    const rawPhone = provider?.phone || booking?.provider?.phone || '';
+    const phone    = rawPhone ? String(rawPhone).replace(/[^0-9+]/g, '') : '';
+    let   waPhone  = phone.replace(/\D/g, '');
+    if (waPhone.startsWith('0')) waPhone = '92' + waPhone.slice(1);
+    else if (waPhone.length === 10 && waPhone.startsWith('3')) waPhone = '92' + waPhone;
 
-    // Show the prominent confirmation modal immediately.
+    const sBtn = 'padding:10px 4px;border-radius:10px;border:1px solid var(--card-border,rgba(0,0,0,0.1));background:rgba(255,255,255,0.7);color:var(--text);font-size:0.74rem;font-weight:700;cursor:pointer;';
+
+    // Full inline card with all details + actions — what the user actually wants to see in chat
+    const card = document.createElement('div');
+    card.className = 'provider-card booking-card';
+    card.style.cssText = 'background:rgba(16,185,129,0.08);border:1px solid rgba(16,185,129,0.5);border-radius:16px;padding:14px;margin-top:6px;';
+    card.innerHTML = `
+        <div style="font-weight:800;font-size:1rem;color:#10b981;display:flex;align-items:center;gap:6px;">✅ Booking Confirmed</div>
+        <div style="font-weight:700;font-size:0.95rem;color:var(--text);margin-top:6px;">${name}</div>
+        <div style="color:var(--text-dim);font-size:0.78rem;margin-top:5px;line-height:1.6;">🚗 ETA ${eta} min &nbsp;•&nbsp; 💰 PKR ${cost}<br>🎫 ${bookId}</div>
+        <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px;margin-top:11px;">
+            <button data-act="call"  style="${sBtn}">📞 Call</button>
+            <button data-act="wa"    style="${sBtn}">💬 WhatsApp</button>
+            <button data-act="track" style="${sBtn}">📍 Track</button>
+        </div>
+        <button data-act="cancel" style="width:100%;margin-top:8px;padding:10px;border-radius:11px;border:1px solid rgba(239,68,68,0.45);background:rgba(239,68,68,0.08);color:#ef4444;font-weight:800;font-size:0.8rem;cursor:pointer;">🗑️ Cancel Booking</button>`;
+
+    card.querySelector('[data-act="call"]').addEventListener('click', () => {
+        if (phone) window.location.href = 'tel:' + phone;
+        else appendMessage('📞 Is provider ka phone number record par nahi.', 'bot-message');
+    });
+    card.querySelector('[data-act="wa"]').addEventListener('click', () => {
+        if (waPhone) window.open('https://wa.me/' + waPhone + '?text=' + encodeURIComponent('Assalam o Alaikum! Fixr app se booking ki hai.'), '_blank');
+        else appendMessage('💬 Is provider ka WhatsApp number record par nahi.', 'bot-message');
+    });
+    card.querySelector('[data-act="track"]').addEventListener('click', () => {
+        const q = (provider && provider.lat != null && provider.lng != null)
+            ? encodeURIComponent(provider.lat + ',' + provider.lng)
+            : encodeURIComponent(name + ' ' + ((provider && provider.location) || ''));
+        window.open('https://www.google.com/maps/search/?api=1&query=' + q, '_blank');
+    });
+    card.querySelector('[data-act="cancel"]').addEventListener('click', () => {
+        if (!confirm('Booking cancel karna chahte hain?')) return;
+        card.style.opacity = '0.55';
+        card.style.borderColor = 'rgba(239,68,68,0.4)';
+        card.querySelectorAll('button').forEach(b => { b.disabled = true; b.style.cursor = 'default'; });
+        appendMessage('🗑️ Aap ki booking <b>cancel</b> kar di gayi hai. Koi aur service chahiye to batayein.', 'bot-message');
+        bookingCount = Math.max(0, bookingCount - 1);
+        if (statBookings) statBookings.textContent = bookingCount;
+    });
+
+    chatContainer.appendChild(card);
+
+    // Aggressively scroll to bottom — handles any layout-timing issue:
+    // disable smooth scroll, force reflow, then retry across animation frames
+    // and timeouts so the new card is ALWAYS visible.
+    const forceScroll = () => {
+        if (!chatContainer) return;
+        const prev = chatContainer.style.scrollBehavior;
+        chatContainer.style.scrollBehavior = 'auto';
+        chatContainer.scrollTop = chatContainer.scrollHeight;
+        chatContainer.style.scrollBehavior = prev || '';
+    };
+    void card.offsetHeight; // force synchronous reflow so scrollHeight is correct
+    forceScroll();
+    requestAnimationFrame(forceScroll);
+    setTimeout(forceScroll, 100);
+    setTimeout(forceScroll, 300);
+    setTimeout(() => card.scrollIntoView({ block: 'end', behavior: 'auto' }), 350);
+
+    // Backup: also show the prominent confirmation modal centered on screen.
     showBookingModal(provider, booking);
 }
 
